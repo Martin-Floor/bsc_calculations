@@ -24,6 +24,13 @@ def singleJob(job, script_name=None, job_name=None, partition='class_a', cpus=24
         if not isinstance(conda_env, str):
             raise ValueError('The conda environment must be given as a string')
 
+    if partition == 'debug':
+        time = 2
+    elif partition == 'bsc_ls':
+        if time > 48:
+            print('Setting time at maximum allowed for the bsc_ls partition (48 hours).')
+            time=48
+
     #Write slurm script
     with open(script_name,'w') as sf:
         sf.write('#!/bin/bash\n')
