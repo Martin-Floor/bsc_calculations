@@ -1,6 +1,8 @@
+import os
+
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
-              partition=None, threads=None, output=None, mail=None, time=48,
-              modules=None, conda_env=None, unload_modules=None):
+              partition='bsc_ls', threads=None, output=None, mail=None, time=48,
+              modules=None, conda_env=None, unload_modules=None, program=None):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -13,6 +15,20 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
     """
 
     available_partitions = ['debug', 'bsc_ls']
+    available_programs = ['rosetta']
+
+    if program not in available_programs and program != None:
+        raise ValueError('Wrong program set up selected. Available programs are: '+
+                         ', '.join(available_programs))
+
+    if program == 'rosetta':
+        rosetta_modules = ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13']
+        if modules == None:
+            modules = rosetta_modules
+        else:
+            modules += rosetta_modules
+
+
     if job_name == None:
         raise ValueError('job_name == None. You need to specify a name for the job')
     if output == None:
@@ -88,3 +104,23 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         with open(script_name,'a') as sf:
             sf.write('conda deactivate \n')
             sf.write('\n')
+
+def setUpPELEForMarenostrum(jobs, partition='bsc_ls', cpus=96):
+    """
+    Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
+
+    Parameters
+    ==========
+    jobs : list
+        Commands for run PELE. This is the output of the setUpPELECalculation() function.
+    """
+    if not os.path.exists('pele_slurm_scripts'):
+        os.mkdir('pele_slurm_scripts')
+
+    zfill = len(str(len(jobs)))
+    with open('pele_slurm.sh' , 'w') as ps:
+        for i,job in enumerate(jobs):
+            job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
+            bsc_calculations.marenostrum.singleJob(job, cpus=cpus, partition=partition, program='pele',
+                                                   job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
+            ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
