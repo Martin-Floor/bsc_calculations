@@ -1,13 +1,8 @@
 import os
 
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
-<<<<<<< HEAD
-              partition='bsc_ls', threads=None, output=None, mail=None, time=48,
-              modules=None, conda_env=None, unload_modules=None, program=None):
-=======
               partition=None, threads=None, output=None, mail=None, time=48,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
->>>>>>> 37ad2ae79bb9772d573283afa029cf7726d8e19d
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -19,7 +14,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         Name of the SLURM submission script.
     """
 
-    available_programs = ['pele', 'peleffy']
+    available_programs = ['pele', 'peleffy', 'rosetta']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -34,13 +29,6 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         elif program == 'peleffy':
             conda_env = '/gpfs/projects/bsc72/conda_envs/peleffy/1.3.4'
 
-    available_partitions = ['debug', 'bsc_ls']
-    available_programs = ['rosetta']
-
-    if program not in available_programs and program != None:
-        raise ValueError('Wrong program set up selected. Available programs are: '+
-                         ', '.join(available_programs))
-
     if program == 'rosetta':
         rosetta_modules = ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13']
         if modules == None:
@@ -48,6 +36,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         else:
             modules += rosetta_modules
 
+    available_partitions = ['debug', 'bsc_ls']
 
     if job_name == None:
         raise ValueError('job_name == None. You need to specify a name for the job')
@@ -127,7 +116,6 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-<<<<<<< HEAD
 def setUpPELEForMarenostrum(jobs, partition='bsc_ls', cpus=96):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
@@ -147,7 +135,7 @@ def setUpPELEForMarenostrum(jobs, partition='bsc_ls', cpus=96):
             bsc_calculations.marenostrum.singleJob(job, cpus=cpus, partition=partition, program='pele',
                                                    job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
             ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
-=======
+
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
               partition=None, threads=None, output=None, mail=None, time=48,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
@@ -241,4 +229,3 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         with open(script_name,'a') as sf:
             sf.write('conda deactivate \n')
             sf.write('\n')
->>>>>>> 37ad2ae79bb9772d573283afa029cf7726d8e19d
