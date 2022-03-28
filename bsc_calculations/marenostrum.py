@@ -1,7 +1,7 @@
 import os
 
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
-              partition=None, threads=None, output=None, mail=None, time=48,
+              partition='bsc_ls', threads=None, output=None, mail=None, time=48,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
     """
     Set up job array scripts for marenostrum slurm job manager.
