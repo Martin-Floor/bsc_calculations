@@ -132,8 +132,8 @@ def setUpPELEForMarenostrum(jobs, partition='bsc_ls', cpus=96):
     with open('pele_slurm.sh' , 'w') as ps:
         for i,job in enumerate(jobs):
             job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
-            bsc_calculations.marenostrum.singleJob(job, cpus=cpus, partition=partition, program='pele',
-                                                   job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
+            singleJob(job, cpus=cpus, partition=partition, program='pele',
+                      job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
             ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
 
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
