@@ -47,6 +47,9 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
             modules = ['singularity', 'alphafold']
         else:
             modules += ['singularity', 'alphafold']
+        cpus_per_task = 80
+        ntasks = 1
+        gpus = 2
 
     if script_name == None:
         script_name = 'slurm_array.sh'
