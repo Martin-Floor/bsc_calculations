@@ -13,7 +13,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
         Name of the SLURM submission script.
     """
 
-    available_programs = ['openmm', 'alphafold']
+    available_programs = ['openmm', 'alphafold', 'gromacs']
     available_partitions = ['debug', 'bsc_ls']
 
     if isinstance(jobs, str):
@@ -50,6 +50,12 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
         cpus_per_task = 80
         ntasks = 1
         gpus = 2
+
+    if program == 'gromacs':
+        if modules == None:
+            modules = ['cuda/10.2', 'gromacs/2020.1']
+        else:
+            modules += ['cuda/10.2', 'gromacs/2020.1']
 
     if script_name == None:
         script_name = 'slurm_array.sh'
