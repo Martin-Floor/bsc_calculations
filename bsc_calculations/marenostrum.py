@@ -116,7 +116,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def setUpPELEForMarenostrum(jobs, partition='bsc_ls', cpus=96):
+def setUpPELEForMarenostrum(jobs, partition='bsc_ls', cpus=96, time=None):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
 
@@ -132,12 +132,12 @@ def setUpPELEForMarenostrum(jobs, partition='bsc_ls', cpus=96):
     with open('pele_slurm.sh' , 'w') as ps:
         for i,job in enumerate(jobs):
             job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
-            singleJob(job, cpus=cpus, partition=partition, program='pele',
+            singleJob(job, cpus=cpus, partition=partition, program='pele', time=time,
                       job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
             ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
 
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
-              partition=None, threads=None, output=None, mail=None, time=48,
+              partition=None, threads=None, output=None, mail=None, time=None,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
 
     available_programs = ['pele']
@@ -179,19 +179,27 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         if not isinstance(conda_env, str):
             raise ValueError('The conda environment must be given as a string')
 
-    if partition == 'debug':
-        time = 2
-    elif partition == 'bsc_ls':
-        if time > 48:
+    if isinstance(time, int):
+        time = (time, 0)
+    if partition == 'debug' and time == None:
+        time= (2,0)
+    elif partition == 'debug' and time != None:
+        if time[0]*60+time[1] > 120:
+            print('Setting time at maximum allowed for the debug partition (2 hours).')
+            time = (2,0)
+    elif partition == 'bsc_ls' and time == None:
+        time = (48,0)
+    elif partition == 'bsc_ls' and time != None:
+        if time[0]*60+time[1] > 2880:
             print('Setting time at maximum allowed for the bsc_ls partition (48 hours).')
-            time=48
+            time=(48,0)
 
     #Write jobs as array
     with open(script_name,'w') as sf:
         sf.write('#!/bin/bash\n')
         sf.write('#SBATCH --job-name='+job_name+'\n')
         sf.write('#SBATCH --qos='+partition+'\n')
-        sf.write('#SBATCH --time='+str(time)+':00:00\n')
+        sf.write('#SBATCH --time='+str(time[0])+':'+str(time[1])+':00\n')
         sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
         if mem_per_cpu != None:
             sf.write('#SBATCH --mem-per-cpu '+str(mem_per_cpu)+'\n')
