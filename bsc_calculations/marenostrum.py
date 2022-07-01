@@ -116,7 +116,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def setUpPELEForMarenostrum(jobs, partition='bsc_ls', cpus=96, time=None):
+def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', partition='bsc_ls', cpus=96, time=None):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
 
@@ -129,7 +129,7 @@ def setUpPELEForMarenostrum(jobs, partition='bsc_ls', cpus=96, time=None):
         os.mkdir('pele_slurm_scripts')
 
     zfill = len(str(len(jobs)))
-    with open('pele_slurm.sh' , 'w') as ps:
+    with open(general_script, 'w') as ps:
         for i,job in enumerate(jobs):
             job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
             singleJob(job, cpus=cpus, partition=partition, program='pele', time=time,
