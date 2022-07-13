@@ -14,7 +14,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         Name of the SLURM submission script.
     """
 
-    available_programs = ['pele', 'peleffy', 'rosetta']
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -35,6 +35,14 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             modules = rosetta_modules
         else:
             modules += rosetta_modules
+
+    if program == 'predig':
+        if modules == None:
+            modules = []
+        modules += ['miniconda3']
+        conda_eval_bash = True
+        if program == 'predig':
+            conda_env = '/home/bsc72/bsc72040/miniconda3/envs/predig'
 
     available_partitions = ['debug', 'bsc_ls']
 
