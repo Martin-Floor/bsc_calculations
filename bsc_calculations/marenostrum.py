@@ -1,7 +1,7 @@
 import os
 
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
-              partition='bsc_ls', threads=None, output=None, mail=None, time=48,
+              partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
     """
     Set up job array scripts for marenostrum slurm job manager.
@@ -14,7 +14,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         Name of the SLURM submission script.
     """
 
-    available_programs = ['pele', 'peleffy', 'rosetta', 'predig']
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -35,6 +35,14 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             modules = rosetta_modules
         else:
             modules += rosetta_modules
+
+    if program == 'pyrosetta':
+        pyrosetta_modules = ['ANACONDA/2019.10']
+        if modules == None:
+            modules = pyrosetta_modules
+        else:
+            modules += pyrosetta_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
 
     if program == 'predig':
         if modules == None:
@@ -95,6 +103,8 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             sf.write('#SBATCH --mail-type=END,FAIL\n')
         sf.write('\n')
 
+        if module_purge:
+                sf.write('module purge\n')
         if unload_modules != None:
             for module in unload_modules:
                 sf.write('module unload '+module+'\n')

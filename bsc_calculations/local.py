@@ -47,6 +47,7 @@ def parallel(jobs, cpus=6, script_name='commands'):
     for i in range(len(jobs)):
         scripts[i%cpus].write(jobs[i])
 
+
     # Close script files
     for c in range(cpus):
         scripts[c].close()
