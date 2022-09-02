@@ -134,7 +134,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', partition='bsc_ls', cpus=96, time=None):
+def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=False, partition='bsc_ls', cpus=96, time=None):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
 
@@ -152,13 +152,15 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', partition='bsc
             job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
             singleJob(job, cpus=cpus, partition=partition, program='pele', time=time,
                       job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
+            if print_name:
+                ps.write('Launching job '+job_name+'\n')
             ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
 
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
               partition=None, threads=None, output=None, mail=None, time=None,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
 
-    available_programs = ['pele']
+    available_programs = ['pele', 'rosetta', 'pyrosetta']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -169,6 +171,21 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         modules += modules+['ANACONDA/2019.10', 'intel', 'mkl', 'impi', 'gcc', 'boost/1.64.0']
         conda_eval_bash = True
         conda_env = '/gpfs/projects/bsc72/conda_envs/platform/1.6.3'
+
+    if program == 'rosetta':
+        rosetta_modules = ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13']
+        if modules == None:
+            modules = rosetta_modules
+        else:
+            modules += rosetta_modules
+
+    if program == 'pyrosetta':
+        pyrosetta_modules = ['ANACONDA/2019.10']
+        if modules == None:
+            modules = pyrosetta_modules
+        else:
+            modules += pyrosetta_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
 
     available_partitions = ['debug', 'bsc_ls']
     if job_name == None:
@@ -182,7 +199,7 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         raise ValueError('Wrong partition selected. Available partitions are:'+
                          ', '.join(available_partitions))
     if script_name == None:
-        script_name = 'slurm_array.sh'
+        script_name = 'slurm_job.sh'
     if modules != None:
         if isinstance(modules, str):
             modules = [modules]
