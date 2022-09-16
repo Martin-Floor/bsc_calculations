@@ -153,7 +153,7 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=Fal
             singleJob(job, cpus=cpus, partition=partition, program='pele', time=time,
                       job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
             if print_name:
-                ps.write('Launching job '+job_name+'\n')
+                ps.write('echo Launching job '+job_name+'\n')
             ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
 
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
