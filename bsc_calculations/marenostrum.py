@@ -1,6 +1,6 @@
 import os
 
-def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
+def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
               partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
     """
@@ -91,6 +91,8 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         sf.write('#SBATCH --qos='+partition+'\n')
         sf.write('#SBATCH --time='+str(time)+':00:00\n')
         sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if highmem:
+            sf.write('#SBATCH --constraint=highmem\n')
         if mem_per_cpu != None:
             sf.write('#SBATCH --mem-per-cpu '+str(mem_per_cpu)+'\n')
         if threads != None:
@@ -134,7 +136,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=False, partition='bsc_ls', cpus=96, time=None):
+def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=False, **kwargs):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
 
@@ -143,6 +145,7 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=Fal
     jobs : list
         Commands for run PELE. This is the output of the setUpPELECalculation() function.
     """
+
     if not os.path.exists('pele_slurm_scripts'):
         os.mkdir('pele_slurm_scripts')
 
@@ -150,13 +153,12 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=Fal
     with open(general_script, 'w') as ps:
         for i,job in enumerate(jobs):
             job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
-            singleJob(job, cpus=cpus, partition=partition, program='pele', time=time,
-                      job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
+            singleJob(job, job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh', **kwargs)
             if print_name:
                 ps.write('echo Launching job '+job_name+'\n')
             ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
 
-def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
+def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, highmem=False,
               partition=None, threads=None, output=None, mail=None, time=None,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
 
@@ -236,6 +238,8 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         sf.write('#SBATCH --qos='+partition+'\n')
         sf.write('#SBATCH --time='+str(time[0])+':'+str(time[1])+':00\n')
         sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if highmem:
+            sf.write('#SBATCH --constraint=highmem\n')
         if mem_per_cpu != None:
             sf.write('#SBATCH --mem-per-cpu '+str(mem_per_cpu)+'\n')
         if threads != None:
