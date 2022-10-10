@@ -153,7 +153,7 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=Fal
     with open(general_script, 'w') as ps:
         for i,job in enumerate(jobs):
             job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
-            singleJob(job, job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh', **kwargs)
+            singleJob(job, job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh', program='pele', **kwargs)
             if print_name:
                 ps.write('echo Launching job '+job_name+'\n')
             ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
