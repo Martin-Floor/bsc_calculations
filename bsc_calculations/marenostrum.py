@@ -14,7 +14,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         Name of the SLURM submission script.
     """
 
-    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta']
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -35,6 +35,13 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             modules = rosetta_modules
         else:
             modules += rosetta_modules
+
+    if program == 'rosetta2':
+        rosetta2_modules = ['rosetta/2.3.1']
+        if modules == None:
+            modules = rosetta2_modules
+        else:
+            modules += rosetta2_modules
 
     if program == 'pyrosetta':
         pyrosetta_modules = ['ANACONDA/2019.10']
@@ -136,7 +143,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=False, **kwargs):
+def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder='pele_slurm_scripts', print_name=False, **kwargs):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
 
@@ -146,17 +153,20 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=Fal
         Commands for run PELE. This is the output of the setUpPELECalculation() function.
     """
 
-    if not os.path.exists('pele_slurm_scripts'):
-        os.mkdir('pele_slurm_scripts')
+    if not os.path.exists(scripts_folder):
+        os.mkdir(scripts_folder)
+
+    if not general_script.endswith('.sh'):
+        general_script += '.sh'
 
     zfill = len(str(len(jobs)))
     with open(general_script, 'w') as ps:
         for i,job in enumerate(jobs):
             job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
-            singleJob(job, job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh', program='pele', **kwargs)
+            singleJob(job, job_name=job_name, script_name=scripts_folder+'/'+job_name+'.sh', program='pele', **kwargs)
             if print_name:
                 ps.write('echo Launching job '+job_name+'\n')
-            ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
+            ps.write('sbatch '+scripts_folder+'/'+job_name+'.sh\n')
 
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, highmem=False,
               partition=None, threads=None, output=None, mail=None, time=None,
