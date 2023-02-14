@@ -2,7 +2,8 @@ import os
 
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
               partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
-              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
+              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
+              jobs_range=None):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -12,7 +13,17 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         List of jobs. Each job is a string representing the command to execute.
     script_name : str
         Name of the SLURM submission script.
+    jobs_range : (list, tuple)
+        The range of job IDs to be included in the job array (one-based numbering).
+        This restart the indexing of the slurm array IDs, so keep count of the original
+        job IDs based on the supplied jobs list. Also, the range includes the last job ID.
+        Useful when large IDs cannot enter the queue.
     """
+
+    # Check input
+    if jobs_range != None:
+        if not isinstance(jobs_range, (list, tuple)) or len(jobs_range) != 2 or not all([isinstance(x, int) for x in jobs_range]):
+            raise ValueError('The given jobs_range must be a tuple or a list of 2-integers')
 
     available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2']
     if program != None:
@@ -90,6 +101,10 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         if time > 48:
             print('Setting time at maximum allowed for the bsc_ls partition (48 hours).')
             time=48
+
+    # Slice jobs if a range is given
+    if jobs_range != None:
+        jobs = jobs[jobs_range[0]-1:jobs_range[1]]
 
     #Write jobs as array
     with open(script_name,'w') as sf:
