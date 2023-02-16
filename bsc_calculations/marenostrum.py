@@ -3,7 +3,7 @@ import os
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
               partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
-              jobs_range=None):
+              jobs_range=None, group_jobs_by=None):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -18,6 +18,9 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         This restart the indexing of the slurm array IDs, so keep count of the original
         job IDs based on the supplied jobs list. Also, the range includes the last job ID.
         Useful when large IDs cannot enter the queue.
+    group_jobs_by : int
+        Group jobs to enter in the same job array (useful for launching many short
+        # jobs when there are a max_job_allowed limit per user.
     """
 
     # Check input
@@ -25,7 +28,25 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         if not isinstance(jobs_range, (list, tuple)) or len(jobs_range) != 2 or not all([isinstance(x, int) for x in jobs_range]):
             raise ValueError('The given jobs_range must be a tuple or a list of 2-integers')
 
-    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2']
+    # Group jobs to enter in the same job array (useful for launching many short
+    # jobs when there are a max_job_allowed limit per user.)
+    if isinstance(group_jobs_by, int):
+        grouped_jobs = []
+        gj = ''
+        groups_jobs_by = 3
+        for i,j in enumerate(jobs):
+            gj += j
+            if  (i+1) % groups_jobs_by == 0:
+                grouped_jobs.append(gj)
+                gj = ''
+        if gj != '':
+            grouped_jobs.append(gj)
+        jobs = grouped_jobs
+
+    elif not isinstance(group_jobs_by, type(None)):
+        raise ValueError('You must give an integer to group jobs by this number.')
+
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -61,6 +82,13 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         else:
             modules += pyrosetta_modules
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+    if program == 'blast':
+        blast_modules = ['blast']
+        if modules == None:
+            modules = blast_modules
+        else:
+            modules += blast_modules
 
     if program == 'predig':
         if modules == None:
