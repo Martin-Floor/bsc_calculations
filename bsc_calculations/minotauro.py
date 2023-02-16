@@ -30,7 +30,6 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
     if isinstance(group_jobs_by, int):
         grouped_jobs = []
         gj = ''
-        groups_jobs_by = 3
         for i,j in enumerate(jobs):
             gj += j
             if  (i+1) % groups_jobs_by == 0:
