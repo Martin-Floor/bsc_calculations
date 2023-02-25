@@ -246,7 +246,8 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def setUpPELEForNord3(jobs, general_script='pele_slurm.sh', print_name=False, partition='bsc_ls', cpus=96, time=None):
+def setUpPELEForNord3(jobs, general_script='pele_slurm.sh', scripts_folder='pele_slurm_scripts',
+                      print_name=False, partition='bsc_ls', cpus=96, time=None):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
 
@@ -259,15 +260,15 @@ def setUpPELEForNord3(jobs, general_script='pele_slurm.sh', print_name=False, pa
     if not isinstance(jobs, list):
         raise ValueError('PELE jobs must be given as a list!')
 
-    if not os.path.exists('pele_slurm_scripts'):
-        os.mkdir('pele_slurm_scripts')
+    if not os.path.exists(scripts_folder):
+        os.mkdir(scripts_folder)
 
     zfill = len(str(len(jobs)))
     with open(general_script, 'w') as ps:
         for i,job in enumerate(jobs):
             job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
             singleJob(job, cpus=cpus, partition=partition, program='pele', time=time,
-                      job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
+                      job_name=job_name, script_name=scripts_folder+'/'+job_name+'.sh')
             if print_name:
                 ps.write('echo Launching job '+job_name+'\n')
-            ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
+            ps.write('sbatch '+scripts_folder+'/'+job_name+'.sh\n')

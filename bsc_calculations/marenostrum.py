@@ -185,7 +185,8 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder='pele_slurm_scripts', print_name=False, **kwargs):
+def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder='pele_slurm_scripts', 
+                            print_name=False, **kwargs):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
 
