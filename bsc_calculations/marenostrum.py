@@ -83,10 +83,11 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
 
     if program == 'msd':
+        msd_modules = ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13', 'ANACONDA/2019.10']
         if modules == None:
-            modules = ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13', 'ANACONDA/2019.10']
+            modules = msd_modules
         else:
-            modules += ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13', 'ANACONDA/2019.10']
+            modules += msd_modules
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
 
     if program == 'blast':
