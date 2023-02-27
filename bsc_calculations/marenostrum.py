@@ -45,12 +45,12 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     elif not isinstance(group_jobs_by, type(None)):
         raise ValueError('You must give an integer to group jobs by this number.')
 
-    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast']
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
 
-    if program == 'pele' or program == 'peleffy':
+    if program in ['pele', 'peleffy']:
         if modules == None:
             modules = []
         modules += modules+['ANACONDA/2019.10', 'intel', 'mkl', 'impi', 'gcc', 'boost/1.64.0']
@@ -80,6 +80,13 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             modules = pyrosetta_modules
         else:
             modules += pyrosetta_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+    if program == 'msd':
+        if modules == None:
+            modules = ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13', 'ANACONDA/2019.10']
+        else:
+            modules += ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13', 'ANACONDA/2019.10']
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
 
     if program == 'blast':
@@ -185,7 +192,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder='pele_slurm_scripts', 
+def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder='pele_slurm_scripts',
                             print_name=False, **kwargs):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
