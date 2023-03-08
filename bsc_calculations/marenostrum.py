@@ -1,8 +1,9 @@
 import os
 
-def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
+def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
               partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
-              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
+              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
+              jobs_range=None, group_jobs_by=None):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -12,14 +13,44 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         List of jobs. Each job is a string representing the command to execute.
     script_name : str
         Name of the SLURM submission script.
+    jobs_range : (list, tuple)
+        The range of job IDs to be included in the job array (one-based numbering).
+        This restart the indexing of the slurm array IDs, so keep count of the original
+        job IDs based on the supplied jobs list. Also, the range includes the last job ID.
+        Useful when large IDs cannot enter the queue.
+    group_jobs_by : int
+        Group jobs to enter in the same job array (useful for launching many short
+        # jobs when there are a max_job_allowed limit per user.
     """
 
-    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta']
+    # Check input
+    if jobs_range != None:
+        if not isinstance(jobs_range, (list, tuple)) or len(jobs_range) != 2 or not all([isinstance(x, int) for x in jobs_range]):
+            raise ValueError('The given jobs_range must be a tuple or a list of 2-integers')
+
+    # Group jobs to enter in the same job array (useful for launching many short
+    # jobs when there are a max_job_allowed limit per user.)
+    if isinstance(group_jobs_by, int):
+        grouped_jobs = []
+        gj = ''
+        for i,j in enumerate(jobs):
+            gj += j
+            if  (i+1) % group_jobs_by == 0:
+                grouped_jobs.append(gj)
+                gj = ''
+        if gj != '':
+            grouped_jobs.append(gj)
+        jobs = grouped_jobs
+
+    elif not isinstance(group_jobs_by, type(None)):
+        raise ValueError('You must give an integer to group jobs by this number.')
+
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
 
-    if program == 'pele' or program == 'peleffy':
+    if program in ['pele', 'peleffy']:
         if modules == None:
             modules = []
         modules += modules+['ANACONDA/2019.10', 'intel', 'mkl', 'impi', 'gcc', 'boost/1.64.0']
@@ -36,6 +67,13 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         else:
             modules += rosetta_modules
 
+    if program == 'rosetta2':
+        rosetta2_modules = ['rosetta/2.3.1']
+        if modules == None:
+            modules = rosetta2_modules
+        else:
+            modules += rosetta2_modules
+
     if program == 'pyrosetta':
         pyrosetta_modules = ['ANACONDA/2019.10']
         if modules == None:
@@ -43,6 +81,21 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         else:
             modules += pyrosetta_modules
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+    if program == 'msd':
+        msd_modules = ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13', 'ANACONDA/2019.10']
+        if modules == None:
+            modules = msd_modules
+        else:
+            modules += msd_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+    if program == 'blast':
+        blast_modules = ['blast']
+        if modules == None:
+            modules = blast_modules
+        else:
+            modules += blast_modules
 
     if program == 'predig':
         if modules == None:
@@ -84,6 +137,10 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             print('Setting time at maximum allowed for the bsc_ls partition (48 hours).')
             time=48
 
+    # Slice jobs if a range is given
+    if jobs_range != None:
+        jobs = jobs[jobs_range[0]-1:jobs_range[1]]
+
     #Write jobs as array
     with open(script_name,'w') as sf:
         sf.write('#!/bin/bash\n')
@@ -91,6 +148,8 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         sf.write('#SBATCH --qos='+partition+'\n')
         sf.write('#SBATCH --time='+str(time)+':00:00\n')
         sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if highmem:
+            sf.write('#SBATCH --constraint=highmem\n')
         if mem_per_cpu != None:
             sf.write('#SBATCH --mem-per-cpu '+str(mem_per_cpu)+'\n')
         if threads != None:
@@ -134,7 +193,8 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=False, partition='bsc_ls', cpus=96, time=None):
+def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder='pele_slurm_scripts',
+                            print_name=False, **kwargs):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
 
@@ -143,20 +203,23 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', print_name=Fal
     jobs : list
         Commands for run PELE. This is the output of the setUpPELECalculation() function.
     """
-    if not os.path.exists('pele_slurm_scripts'):
-        os.mkdir('pele_slurm_scripts')
+
+    if not os.path.exists(scripts_folder):
+        os.mkdir(scripts_folder)
+
+    if not general_script.endswith('.sh'):
+        general_script += '.sh'
 
     zfill = len(str(len(jobs)))
     with open(general_script, 'w') as ps:
         for i,job in enumerate(jobs):
             job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
-            singleJob(job, cpus=cpus, partition=partition, program='pele', time=time,
-                      job_name=job_name, script_name='pele_slurm_scripts/'+job_name+'.sh')
+            singleJob(job, job_name=job_name, script_name=scripts_folder+'/'+job_name+'.sh', program='pele', **kwargs)
             if print_name:
                 ps.write('echo Launching job '+job_name+'\n')
-            ps.write('sbatch pele_slurm_scripts/'+job_name+'.sh\n')
+            ps.write('sbatch '+scripts_folder+'/'+job_name+'.sh\n')
 
-def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
+def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, highmem=False,
               partition=None, threads=None, output=None, mail=None, time=None,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
 
@@ -236,6 +299,8 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         sf.write('#SBATCH --qos='+partition+'\n')
         sf.write('#SBATCH --time='+str(time[0])+':'+str(time[1])+':00\n')
         sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if highmem:
+            sf.write('#SBATCH --constraint=highmem\n')
         if mem_per_cpu != None:
             sf.write('#SBATCH --mem-per-cpu '+str(mem_per_cpu)+'\n')
         if threads != None:

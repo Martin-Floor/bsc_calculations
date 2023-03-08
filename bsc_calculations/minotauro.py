@@ -1,6 +1,7 @@
 def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, ntasks=1,
               nodes=1, output=None, mail=None, time=48, modules=None, conda_env=None, constraint=None,
-              unload_modules=None, program=None, pythonpath=None, partition='bsc_ls', purge=False):
+              unload_modules=None, program=None, pythonpath=None, partition='bsc_ls', purge=False,
+              group_jobs_by=None):
 
     """
     Set up job array scripts for marenostrum slurm job manager.
@@ -23,6 +24,23 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
         raise ValueError('job_name == None. You need to specify a name for the job')
     if output == None:
         output = job_name
+
+    # Group jobs to enter in the same job array (useful for launching many short
+    # jobs when there are a max_job_allowed limit per user.)
+    if isinstance(group_jobs_by, int):
+        grouped_jobs = []
+        gj = ''
+        for i,j in enumerate(jobs):
+            gj += j
+            if  (i+1) % groups_jobs_by == 0:
+                grouped_jobs.append(gj)
+                gj = ''
+        if gj != '':
+            grouped_jobs.append(gj)
+        jobs = grouped_jobs
+
+    elif not isinstance(group_jobs_by, type(None)):
+        raise ValueError('You must give an integer to group jobs by this number.')
 
     if partition not in available_partitions:
         raise ValueError('Wrong partition set up selected. Available partitions are: '+

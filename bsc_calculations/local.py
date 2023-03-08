@@ -1,6 +1,6 @@
 import os
 
-def parallel(jobs, cpus=6, script_name='commands'):
+def parallel(jobs, cpus=None, script_name='commands'):
     """
     Generates scripts to run jobs simultaneously in N Cpus in a local computer,
     i.e., without a job manager. The input jobs must be a list representing each
@@ -35,6 +35,9 @@ def parallel(jobs, cpus=6, script_name='commands'):
         Name of the output scripts to execute the jobs.
     """
     # Write parallel execution scheme #
+
+    if cpus == None:
+        cpus = min([len(jobs), 10])
 
     # Open script files
     zf = len(str(cpus))
