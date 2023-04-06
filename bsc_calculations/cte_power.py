@@ -37,9 +37,9 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
         else:
             modules += ['openmpi/3.0.0', 'python/3.6.5']
         if pythonpath == None:
-            pythonpath = ['/home/bsc72/bsc72523/Programs/sbm-openmm/compiled/lib/python3.6/site-packages']
+            pythonpath = ['/gpfs/projects/bsc72/sbmOpenMM/compiled/lib/python3.6/site-packages/']
         else:
-            pythonpath += ['/home/bsc72/bsc72523/Programs/sbm-openmm/compiled/lib/python3.6/site-packages']
+            pythonpath += ['/gpfs/projects/bsc72/sbmOpenMM/compiled/lib/python3.6/site-packages/']
 
     if program == 'alphafold':
         purge = True
