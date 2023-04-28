@@ -112,7 +112,7 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
               partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
-              jobs_range=None):
+              jobs_range=None, group_jobs_by=None):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -127,12 +127,32 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         This restart the indexing of the slurm array IDs, so keep count of the original
         job IDs based on the supplied jobs list. Also, the range includes the last job ID.
         Useful when large IDs cannot enter the queue.
+    group_jobs_by : int
+        Group jobs to enter in the same job array (useful for launching many short
+        jobs when there are a max_job_allowed limit per user.
     """
 
     # Check input
     if jobs_range != None:
         if not isinstance(jobs_range, (list, tuple)) or len(jobs_range) != 2 or not all([isinstance(x, int) for x in jobs_range]):
             raise ValueError('The given jobs_range must be a tuple or a list of 2-integers')
+
+    # Group jobs to enter in the same job array (useful for launching many short
+    # jobs when there are a max_job_allowed limit per user.)
+    if isinstance(group_jobs_by, int):
+        grouped_jobs = []
+        gj = ''
+        for i,j in enumerate(jobs):
+            gj += j
+            if  (i+1) % group_jobs_by == 0:
+                grouped_jobs.append(gj)
+                gj = ''
+        if gj != '':
+            grouped_jobs.append(gj)
+        jobs = grouped_jobs
+
+    elif not isinstance(group_jobs_by, type(None)):
+        raise ValueError('You must give an integer to group jobs by this number.')
 
     available_programs = ['rosetta']
     if program != None:

@@ -4,7 +4,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
               group_jobs_by=None):
 
     """
-    Set up job array scripts for marenostrum slurm job manager.
+    Set up job array scripts for Minotauro slurm job manager.
 
     Parameters
     ==========

@@ -20,7 +20,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         Useful when large IDs cannot enter the queue.
     group_jobs_by : int
         Group jobs to enter in the same job array (useful for launching many short
-        # jobs when there are a max_job_allowed limit per user.
+        jobs when there are a max_job_allowed limit per user.
     """
 
     # Check input
