@@ -4,7 +4,7 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
               partition=None, threads=None, output=None, mail=None, time=None, purge=False,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
 
-    available_programs = ['pele']
+    available_programs = ['pele', 'pyrosetta']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -16,6 +16,14 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         modules += modules+['anaconda', 'intel', 'impi', 'mkl', 'boost', 'cmake', 'transfer', 'bsc']
         conda_eval_bash = True
         conda_env = '/gpfs/projects/bsc72/conda_envs/platform/1.6.3'
+
+    if program == 'pyrosetta':
+        pyrosetta_modules = ['anaconda']
+        if modules == None:
+            modules = pyrosetta_modules
+        else:
+            modules += pyrosetta_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
 
     available_partitions = ['debug', 'bsc_ls']
     if job_name == None:
@@ -137,6 +145,10 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         if not isinstance(jobs_range, (list, tuple)) or len(jobs_range) != 2 or not all([isinstance(x, int) for x in jobs_range]):
             raise ValueError('The given jobs_range must be a tuple or a list of 2-integers')
 
+    if not isinstance(script_name, str):
+        raise ValueError('script_name must be a string')
+
+
     # Group jobs to enter in the same job array (useful for launching many short
     # jobs when there are a max_job_allowed limit per user.)
     if isinstance(group_jobs_by, int):
@@ -154,7 +166,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     elif not isinstance(group_jobs_by, type(None)):
         raise ValueError('You must give an integer to group jobs by this number.')
 
-    available_programs = ['rosetta']
+    available_programs = ['rosetta', 'pyrosetta']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -166,6 +178,14 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         else:
             modules += rosetta_modules
 
+    if program == 'pyrosetta':
+        pyrosetta_modules = ['anaconda']
+        if modules == None:
+            modules = pyrosetta_modules
+        else:
+            modules += pyrosetta_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
     available_partitions = ['debug', 'bsc_ls']
 
     if job_name == None:
@@ -175,8 +195,12 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     if partition not in available_partitions:
         raise ValueError('Wrong partition selected. Available partitions are:'+
                          ', '.join(available_partitions))
+
     if script_name == None:
         script_name = 'slurm_array.sh'
+    elif not script_name.endswith('.sh'):
+        script_name += '.sh'
+        
     if modules != None:
         if isinstance(modules, str):
             modules = [modules]
