@@ -3,7 +3,7 @@ import os
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
               partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
-              jobs_range=None, group_jobs_by=None):
+              jobs_range=None, group_jobs_by=None, pythonpath=None, local_libraries=False):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -21,9 +21,14 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     group_jobs_by : int
         Group jobs to enter in the same job array (useful for launching many short
         jobs when there are a max_job_allowed limit per user.
+    local_libraries : bool
+        Add local libraries (e.g., prepare_proteins) to PYTHONPATH?
     """
 
     # Check input
+    if isinstance(jobs, str):
+        jobs = [jobs]
+
     if jobs_range != None:
         if not isinstance(jobs_range, (list, tuple)) or len(jobs_range) != 2 or not all([isinstance(x, int) for x in jobs_range]):
             raise ValueError('The given jobs_range must be a tuple or a list of 2-integers')
@@ -44,6 +49,10 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
 
     elif not isinstance(group_jobs_by, type(None)):
         raise ValueError('You must give an integer to group jobs by this number.')
+
+    # Check PYTHONPATH variable
+    if pythonpath == None:
+        pythonpath = []
 
     available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd']
     if program != None:
@@ -105,6 +114,9 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         if program == 'predig':
             conda_env = '/home/bsc72/bsc72040/miniconda3/envs/predig'
 
+    if local_libraries:
+        pythonpath.append('/gpfs/projects/bsc72/local_libraries/compiled')
+
     available_partitions = ['debug', 'bsc_ls']
 
     if job_name == None:
@@ -114,8 +126,12 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     if partition not in available_partitions:
         raise ValueError('Wrong partition selected. Available partitions are:'+
                          ', '.join(available_partitions))
+
     if script_name == None:
         script_name = 'slurm_array.sh'
+    elif not script_name.endswith('.sh'):
+        script_name += '.sh'
+
     if modules != None:
         if isinstance(modules, str):
             modules = [modules]
@@ -176,6 +192,10 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             sf.write('eval "$(conda shell.bash hook)"\n')
         if conda_env != None:
             sf.write('source activate '+conda_env+'\n')
+            sf.write('\n')
+
+        for pp in pythonpath:
+            sf.write('export PYTHONPATH=$PYTHONPATH:'+pp+'\n')
             sf.write('\n')
 
     for i in range(len(jobs)):
