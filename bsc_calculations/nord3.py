@@ -145,10 +145,6 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         if not isinstance(jobs_range, (list, tuple)) or len(jobs_range) != 2 or not all([isinstance(x, int) for x in jobs_range]):
             raise ValueError('The given jobs_range must be a tuple or a list of 2-integers')
 
-    if not isinstance(script_name, str):
-        raise ValueError('script_name must be a string')
-
-
     # Group jobs to enter in the same job array (useful for launching many short
     # jobs when there are a max_job_allowed limit per user.)
     if isinstance(group_jobs_by, int):
@@ -198,9 +194,13 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
 
     if script_name == None:
         script_name = 'slurm_array.sh'
+
     elif not script_name.endswith('.sh'):
         script_name += '.sh'
-        
+
+    if not isinstance(script_name, str):
+        raise ValueError('script_name must be a string')
+
     if modules != None:
         if isinstance(modules, str):
             modules = [modules]
