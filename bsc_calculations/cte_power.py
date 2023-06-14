@@ -53,9 +53,9 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
 
     if program == 'gromacs':
         if modules == None:
-            modules = ['cuda/10.2', 'gromacs/2020.1']
+            modules = ['cuda/10.2', 'gromacs/2018.4']
         else:
-            modules += ['cuda/10.2', 'gromacs/2020.1']
+            modules += ['cuda/10.2', 'gromacs/2018.4']
 
     if script_name == None:
         script_name = 'slurm_array.sh'
