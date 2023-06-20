@@ -240,7 +240,7 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder
             ps.write('sbatch '+scripts_folder+'/'+job_name+'.sh\n')
 
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, highmem=False,
-              partition=None, threads=None, output=None, mail=None, time=None
+              partition=None, threads=None, output=None, mail=None, time=None,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
 
     available_programs = ['pele', 'rosetta', 'pyrosetta']
