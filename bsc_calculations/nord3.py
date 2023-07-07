@@ -2,9 +2,10 @@ import os
 
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
               partition=None, threads=None, output=None, mail=None, time=None, purge=False,
-              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
+              modules=None, tasks=None, cpus_per_task=None, conda_env=None, unload_modules=None,
+              program=None, conda_eval_bash=False):
 
-    available_programs = ['pele', 'pyrosetta']
+    available_programs = ['pele', 'pyrosetta', 'pml']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -24,6 +25,14 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         else:
             modules += pyrosetta_modules
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+    if program == 'pml':
+        pml_modules = ['anaconda']
+        if modules == None:
+            modules = pml_modules
+        else:
+            modules += pml_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pml'
 
     available_partitions = ['debug', 'bsc_ls']
     if job_name == None:
@@ -77,7 +86,12 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         sf.write('#SBATCH --job-name='+job_name+'\n')
         sf.write('#SBATCH --qos='+partition+'\n')
         sf.write('#SBATCH --time='+str(time[0])+':'+str(time[1])+':00\n')
-        sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if tasks:
+            sf.write('#SBATCH --ntasks '+str(tasks)+'\n')
+        else:
+            sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if cpus_per_task:
+            sf.write('#SBATCH --cpus-per-task '+str(cpus_per_task)+'\n')
         if mem_per_cpu != None:
             sf.write('#SBATCH --mem-per-cpu '+str(mem_per_cpu)+'\n')
         if threads != None:
@@ -117,10 +131,10 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
             sf.write('conda deactivate \n')
             sf.write('\n')
 
-def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
-              partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
-              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
-              jobs_range=None, group_jobs_by=None):
+def jobArrays(jobs, script_name=None, job_name=None, tasks=None, cpus_per_task=None, cpus=1,
+              mem_per_cpu=None, highmem=False, partition='bsc_ls', threads=None, output=None, mail=None,
+              time=48, module_purge=False,  modules=None, conda_env=None, unload_modules=None,
+              program=None, conda_eval_bash=False, jobs_range=None, group_jobs_by=None):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -162,7 +176,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     elif not isinstance(group_jobs_by, type(None)):
         raise ValueError('You must give an integer to group jobs by this number.')
 
-    available_programs = ['rosetta', 'pyrosetta']
+    available_programs = ['rosetta', 'pyrosetta', 'pml']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -181,6 +195,14 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         else:
             modules += pyrosetta_modules
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+    if program == 'pml':
+        pml_modules = ['anaconda']
+        if modules == None:
+            modules = pml_modules
+        else:
+            modules += pml_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pml'
 
     available_partitions = ['debug', 'bsc_ls']
 
@@ -244,7 +266,12 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         sf.write('#SBATCH --job-name='+job_name+'\n')
         sf.write('#SBATCH --qos='+partition+'\n')
         sf.write('#SBATCH --time='+str(time[0])+':'+str(time[1])+':00\n')
-        sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if tasks:
+            sf.write('#SBATCH --ntasks '+str(tasks)+'\n')
+        else:
+            sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if cpus_per_task:
+            sf.write('#SBATCH --cpus-per-task '+str(cpus_per_task)+'\n')
         if highmem:
             sf.write('#SBATCH --constraint=highmem\n')
         if mem_per_cpu != None:

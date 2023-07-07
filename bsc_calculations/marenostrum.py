@@ -54,7 +54,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     if pythonpath == None:
         pythonpath = []
 
-    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd']
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd', 'pml']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -90,6 +90,14 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         else:
             modules += pyrosetta_modules
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+    if program == 'pml':
+        pml_modules = ['ANACONDA/2019.10']
+        if modules == None:
+            modules = pml_modules
+        else:
+            modules += pml_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pml'
 
     if program == 'msd':
         msd_modules = ['gcc/7.2.0', 'impi/2017.4', 'rosetta/3.13', 'ANACONDA/2019.10']
