@@ -54,7 +54,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     if pythonpath == None:
         pythonpath = []
 
-    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd', 'pml']
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd', 'pml', 'netsolp']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -121,6 +121,18 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         conda_eval_bash = True
         if program == 'predig':
             conda_env = '/home/bsc72/bsc72040/miniconda3/envs/predig'
+
+    if program == 'netsolp':
+        netsolp_modules = ['ANACONDA/2019.10']
+        if modules == None:
+            modules = netsolp_modules
+        else:
+            modules += netsolp_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/netsolp'
+
+        for i,job in enumerate(jobs):
+            if 'NETSOLP_PATH' in jobs[i]:
+                jobs[i] = jobs[i].replace('NETSOLP_PATH', '\/gpfs\/projects\/bsc72\/programs\/netsolp-1.0')
 
     if local_libraries:
         pythonpath.append('/gpfs/projects/bsc72/local_libraries/compiled')
