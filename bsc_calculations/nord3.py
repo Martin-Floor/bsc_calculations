@@ -1,10 +1,209 @@
 import os
 
+def jobArrays(jobs, script_name=None, job_name=None, tasks=None, cpus_per_task=None, cpus=1,
+              mem_per_cpu=None, highmem=False, partition='bsc_ls', threads=None, output=None, mail=None,
+              time=48, module_purge=False,  modules=None, conda_env=None, unload_modules=None,
+              program=None, conda_eval_bash=False, jobs_range=None, group_jobs_by=None):
+    """
+    Set up job array scripts for marenostrum slurm job manager.
+
+    Parameters
+    ==========
+    jobs : list
+        List of jobs. Each job is a string representing the command to execute.
+    script_name : str
+        Name of the SLURM submission script.
+    jobs_range : (list, tuple)
+        The range of job IDs to be included in the job array (one-based numbering).
+        This restart the indexing of the slurm array IDs, so keep count of the original
+        job IDs based on the supplied jobs list. Also, the range includes the last job ID.
+        Useful when large IDs cannot enter the queue.
+    group_jobs_by : int
+        Group jobs to enter in the same job array (useful for launching many short
+        jobs when there are a max_job_allowed limit per user.
+    """
+
+    # Check input
+    if jobs_range != None:
+        if not isinstance(jobs_range, (list, tuple)) or len(jobs_range) != 2 or not all([isinstance(x, int) for x in jobs_range]):
+            raise ValueError('The given jobs_range must be a tuple or a list of 2-integers')
+
+    # Group jobs to enter in the same job array (useful for launching many short
+    # jobs when there are a max_job_allowed limit per user.)
+    if isinstance(group_jobs_by, int):
+        grouped_jobs = []
+        gj = ''
+        for i,j in enumerate(jobs):
+            gj += j
+            if  (i+1) % group_jobs_by == 0:
+                grouped_jobs.append(gj)
+                gj = ''
+        if gj != '':
+            grouped_jobs.append(gj)
+        jobs = grouped_jobs
+
+    elif not isinstance(group_jobs_by, type(None)):
+        raise ValueError('You must give an integer to group jobs by this number.')
+
+    available_programs = ['rosetta', 'pyrosetta', 'pml', 'netsolp']
+    if program != None:
+        if program not in available_programs:
+            raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
+
+    if program == 'rosetta':
+        rosetta_modules = ['intel/2021.4', 'impi/2021.4', 'mkl/2021.4', 'rosetta/3.13']
+        if modules == None:
+            modules = rosetta_modules
+        else:
+            modules += rosetta_modules
+
+    if program == 'pyrosetta':
+        pyrosetta_modules = ['anaconda']
+        if modules == None:
+            modules = pyrosetta_modules
+        else:
+            modules += pyrosetta_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+    if program == 'pml':
+        pml_modules = ['anaconda']
+        if modules == None:
+            modules = pml_modules
+        else:
+            modules += pml_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pml'
+
+    if program == 'netsolp':
+        netsolp_modules = ['anaconda']
+        if modules == None:
+            modules = netsolp_modules
+        else:
+            modules += netsolp_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/netsolp'
+
+        for i,job in enumerate(jobs):
+            if 'NETSOLP_PATH' in jobs[i]:
+                jobs[i] = jobs[i].replace('NETSOLP_PATH', '\/gpfs\/projects\/bsc72\/programs\/netsolp-1.0')
+
+    available_partitions = ['debug', 'bsc_ls']
+
+    if job_name == None:
+        raise ValueError('job_name == None. You need to specify a name for the job')
+    if output == None:
+        output = job_name
+    if partition not in available_partitions:
+        raise ValueError('Wrong partition selected. Available partitions are:'+
+                         ', '.join(available_partitions))
+
+    if script_name == None:
+        script_name = 'slurm_array.sh'
+
+    elif not script_name.endswith('.sh'):
+        script_name += '.sh'
+
+    if not isinstance(script_name, str):
+        raise ValueError('script_name must be a string')
+
+    if modules != None:
+        if isinstance(modules, str):
+            modules = [modules]
+        if not isinstance(modules, list):
+            raise ValueError('Modules to load must be given as a list or as a string (for loading one module only)')
+    if unload_modules != None:
+        if isinstance(unload_modules, str):
+            unload_modules = [unload_modules]
+        if not isinstance(unload_modules, list):
+            raise ValueError('Modules to unload must be given as a list or as a string (for unloading one module only)')
+    if conda_env != None:
+        if not isinstance(conda_env, str):
+            raise ValueError('The conda environment must be given as a string')
+
+    if isinstance(time, int):
+        time = (time, 0)
+    if partition == 'debug' and cpus > 64:
+        cpus = 64
+        print('Setting cpus at maximum allowed for the debug partition (64)')
+
+    if partition == 'debug' and time == None:
+        time= (2,0)
+    elif partition == 'debug' and time != None:
+        if time[0]*60+time[1] > 120:
+            print('Setting time at maximum allowed for the debug partition (2 hours).')
+            time = (2,0)
+    elif partition == 'bsc_ls' and time == None:
+        time = (48,0)
+    elif partition == 'bsc_ls' and time != None:
+        if time[0]*60+time[1] > 2880:
+            print('Setting time at maximum allowed for the bsc_ls partition (48 hours).')
+            time=(48,0)
+
+    # Slice jobs if a range is given
+    if jobs_range != None:
+        jobs = jobs[jobs_range[0]-1:jobs_range[1]]
+
+    #Write jobs as array
+    with open(script_name,'w') as sf:
+        sf.write('#!/bin/bash\n')
+        sf.write('#SBATCH --job-name='+job_name+'\n')
+        sf.write('#SBATCH --qos='+partition+'\n')
+        sf.write('#SBATCH --time='+str(time[0])+':'+str(time[1])+':00\n')
+        if tasks:
+            sf.write('#SBATCH --ntasks '+str(tasks)+'\n')
+        else:
+            sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if cpus_per_task:
+            sf.write('#SBATCH --cpus-per-task '+str(cpus_per_task)+'\n')
+        if highmem:
+            sf.write('#SBATCH --constraint=highmem\n')
+        if mem_per_cpu != None:
+            sf.write('#SBATCH --mem-per-cpu '+str(mem_per_cpu)+'\n')
+        if threads != None:
+            sf.write('#SBATCH -c '+str(threads)+'\n')
+        sf.write('#SBATCH --array=1-'+str(len(jobs))+'\n')
+        sf.write('#SBATCH --output='+output+'_%a_%A.out\n')
+        sf.write('#SBATCH --error='+output+'_%a_%A.err\n')
+        if mail != None:
+            sf.write('#SBATCH --mail-user='+mail+'\n')
+            sf.write('#SBATCH --mail-type=END,FAIL\n')
+        sf.write('\n')
+
+        if module_purge:
+                sf.write('module purge\n')
+        if unload_modules != None:
+            for module in unload_modules:
+                sf.write('module unload '+module+'\n')
+            sf.write('\n')
+        if modules != None:
+            for module in modules:
+                sf.write('module load '+module+'\n')
+            sf.write('\n')
+        if conda_eval_bash:
+            sf.write('eval "$(conda shell.bash hook)"\n')
+        if conda_env != None:
+            sf.write('source activate '+conda_env+'\n')
+            sf.write('\n')
+
+    for i in range(len(jobs)):
+        with open(script_name,'a') as sf:
+            sf.write('if [[ $SLURM_ARRAY_TASK_ID = '+str(i+1)+' ]]; then\n')
+            sf.write(jobs[i])
+            if jobs[i].endswith('\n'):
+                sf.write('fi\n')
+            else:
+                sf.write('\nfi\n')
+            sf.write('\n')
+
+    if conda_env != None:
+        with open(script_name,'a') as sf:
+            sf.write('conda deactivate \n')
+            sf.write('\n')
+
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
               partition=None, threads=None, output=None, mail=None, time=None, purge=False,
-              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
+              modules=None, tasks=None, cpus_per_task=None, conda_env=None, unload_modules=None,
+              program=None, conda_eval_bash=False):
 
-    available_programs = ['pele']
+    available_programs = ['pele', 'pyrosetta', 'pml', 'netsolp']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -17,6 +216,34 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         conda_eval_bash = True
         conda_env = '/gpfs/projects/bsc72/conda_envs/platform/1.6.3'
 
+    if program == 'pyrosetta':
+        pyrosetta_modules = ['anaconda']
+        if modules == None:
+            modules = pyrosetta_modules
+        else:
+            modules += pyrosetta_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+    if program == 'pml':
+        pml_modules = ['anaconda']
+        if modules == None:
+            modules = pml_modules
+        else:
+            modules += pml_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/pml'
+
+    if program == 'netsolp':
+        netsolp_modules = ['anaconda']
+        if modules == None:
+            modules = netsolp_modules
+        else:
+            modules += netsolp_modules
+        conda_env = '/gpfs/projects/bsc72/conda_envs/netsolp'
+
+        for i,job in enumerate(jobs):
+            if 'NETSOLP_PATH' in jobs[i]:
+                jobs[i] = jobs[i].replace('NETSOLP_PATH', '\/gpfs\/projects\/bsc72\/programs\/netsolp-1.0')
+                
     available_partitions = ['debug', 'bsc_ls']
     if job_name == None:
         raise ValueError('job_name == None. You need to specify a name for the job')
@@ -69,7 +296,12 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         sf.write('#SBATCH --job-name='+job_name+'\n')
         sf.write('#SBATCH --qos='+partition+'\n')
         sf.write('#SBATCH --time='+str(time[0])+':'+str(time[1])+':00\n')
-        sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if tasks:
+            sf.write('#SBATCH --ntasks '+str(tasks)+'\n')
+        else:
+            sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
+        if cpus_per_task:
+            sf.write('#SBATCH --cpus-per-task '+str(cpus_per_task)+'\n')
         if mem_per_cpu != None:
             sf.write('#SBATCH --mem-per-cpu '+str(mem_per_cpu)+'\n')
         if threads != None:
@@ -102,143 +334,6 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         if not job.endswith('\n'):
             sf.write('\n\n')
         else:
-            sf.write('\n')
-
-    if conda_env != None:
-        with open(script_name,'a') as sf:
-            sf.write('conda deactivate \n')
-            sf.write('\n')
-
-def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
-              partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
-              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
-              jobs_range=None):
-    """
-    Set up job array scripts for marenostrum slurm job manager.
-
-    Parameters
-    ==========
-    jobs : list
-        List of jobs. Each job is a string representing the command to execute.
-    script_name : str
-        Name of the SLURM submission script.
-    jobs_range : (list, tuple)
-        The range of job IDs to be included in the job array (one-based numbering).
-        This restart the indexing of the slurm array IDs, so keep count of the original
-        job IDs based on the supplied jobs list. Also, the range includes the last job ID.
-        Useful when large IDs cannot enter the queue.
-    """
-
-    # Check input
-    if jobs_range != None:
-        if not isinstance(jobs_range, (list, tuple)) or len(jobs_range) != 2 or not all([isinstance(x, int) for x in jobs_range]):
-            raise ValueError('The given jobs_range must be a tuple or a list of 2-integers')
-
-    available_programs = ['rosetta']
-    if program != None:
-        if program not in available_programs:
-            raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
-
-    if program == 'rosetta':
-        rosetta_modules = ['intel/2021.4', 'impi/2021.4', 'mkl/2021.4', 'rosetta/3.13']
-        if modules == None:
-            modules = rosetta_modules
-        else:
-            modules += rosetta_modules
-
-    available_partitions = ['debug', 'bsc_ls']
-
-    if job_name == None:
-        raise ValueError('job_name == None. You need to specify a name for the job')
-    if output == None:
-        output = job_name
-    if partition not in available_partitions:
-        raise ValueError('Wrong partition selected. Available partitions are:'+
-                         ', '.join(available_partitions))
-    if script_name == None:
-        script_name = 'slurm_array.sh'
-    if modules != None:
-        if isinstance(modules, str):
-            modules = [modules]
-        if not isinstance(modules, list):
-            raise ValueError('Modules to load must be given as a list or as a string (for loading one module only)')
-    if unload_modules != None:
-        if isinstance(unload_modules, str):
-            unload_modules = [unload_modules]
-        if not isinstance(unload_modules, list):
-            raise ValueError('Modules to unload must be given as a list or as a string (for unloading one module only)')
-    if conda_env != None:
-        if not isinstance(conda_env, str):
-            raise ValueError('The conda environment must be given as a string')
-
-    if isinstance(time, int):
-        time = (time, 0)
-    if partition == 'debug' and cpus > 64:
-        cpus = 64
-        print('Setting cpus at maximum allowed for the debug partition (64)')
-
-    if partition == 'debug' and time == None:
-        time= (2,0)
-    elif partition == 'debug' and time != None:
-        if time[0]*60+time[1] > 120:
-            print('Setting time at maximum allowed for the debug partition (2 hours).')
-            time = (2,0)
-    elif partition == 'bsc_ls' and time == None:
-        time = (48,0)
-    elif partition == 'bsc_ls' and time != None:
-        if time[0]*60+time[1] > 2880:
-            print('Setting time at maximum allowed for the bsc_ls partition (48 hours).')
-            time=(48,0)
-
-    # Slice jobs if a range is given
-    if jobs_range != None:
-        jobs = jobs[jobs_range[0]-1:jobs_range[1]]
-
-    #Write jobs as array
-    with open(script_name,'w') as sf:
-        sf.write('#!/bin/bash\n')
-        sf.write('#SBATCH --job-name='+job_name+'\n')
-        sf.write('#SBATCH --qos='+partition+'\n')
-        sf.write('#SBATCH --time='+str(time[0])+':'+str(time[1])+':00\n')
-        sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
-        if highmem:
-            sf.write('#SBATCH --constraint=highmem\n')
-        if mem_per_cpu != None:
-            sf.write('#SBATCH --mem-per-cpu '+str(mem_per_cpu)+'\n')
-        if threads != None:
-            sf.write('#SBATCH -c '+str(threads)+'\n')
-        sf.write('#SBATCH --array=1-'+str(len(jobs))+'\n')
-        sf.write('#SBATCH --output='+output+'_%a_%A.out\n')
-        sf.write('#SBATCH --error='+output+'_%a_%A.err\n')
-        if mail != None:
-            sf.write('#SBATCH --mail-user='+mail+'\n')
-            sf.write('#SBATCH --mail-type=END,FAIL\n')
-        sf.write('\n')
-
-        if module_purge:
-                sf.write('module purge\n')
-        if unload_modules != None:
-            for module in unload_modules:
-                sf.write('module unload '+module+'\n')
-            sf.write('\n')
-        if modules != None:
-            for module in modules:
-                sf.write('module load '+module+'\n')
-            sf.write('\n')
-        if conda_eval_bash:
-            sf.write('eval "$(conda shell.bash hook)"\n')
-        if conda_env != None:
-            sf.write('source activate '+conda_env+'\n')
-            sf.write('\n')
-
-    for i in range(len(jobs)):
-        with open(script_name,'a') as sf:
-            sf.write('if [[ $SLURM_ARRAY_TASK_ID = '+str(i+1)+' ]]; then\n')
-            sf.write(jobs[i])
-            if jobs[i].endswith('\n'):
-                sf.write('fi\n')
-            else:
-                sf.write('\nfi\n')
             sf.write('\n')
 
     if conda_env != None:
