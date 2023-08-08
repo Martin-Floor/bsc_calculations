@@ -45,7 +45,7 @@ def jobArrays(jobs, script_name=None, job_name=None, tasks=None, cpus_per_task=N
     elif not isinstance(group_jobs_by, type(None)):
         raise ValueError('You must give an integer to group jobs by this number.')
 
-    available_programs = ['rosetta', 'pyrosetta', 'pml', 'netsolp']
+    available_programs = ['rosetta', 'pyrosetta', 'pml', 'netsolp', 'blast']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -84,6 +84,13 @@ def jobArrays(jobs, script_name=None, job_name=None, tasks=None, cpus_per_task=N
         for i,job in enumerate(jobs):
             if 'NETSOLP_PATH' in jobs[i]:
                 jobs[i] = jobs[i].replace('NETSOLP_PATH', '\/gpfs\/projects\/bsc72\/programs\/netsolp-1.0')
+
+    if program == 'blast':
+        blast_modules = ['blast']
+        if modules == None:
+            modules = blast_modules
+        else:
+            modules += blast_modules
 
     available_partitions = ['debug', 'bsc_ls']
 
@@ -243,7 +250,7 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None,
         for i,job in enumerate(jobs):
             if 'NETSOLP_PATH' in jobs[i]:
                 jobs[i] = jobs[i].replace('NETSOLP_PATH', '\/gpfs\/projects\/bsc72\/programs\/netsolp-1.0')
-                
+
     available_partitions = ['debug', 'bsc_ls']
     if job_name == None:
         raise ValueError('job_name == None. You need to specify a name for the job')
