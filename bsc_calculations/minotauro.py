@@ -1,4 +1,4 @@
-def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, ntasks=1,
+def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=16, gpus=1, ntasks=1,
               nodes=1, output=None, mail=None, time=48, modules=None, conda_env=None, constraint=None,
               unload_modules=None, program=None, pythonpath=None, partition='bsc_ls', purge=False,
               group_jobs_by=None):
@@ -66,8 +66,6 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
         else:
             modules += ['singularity', 'alphafold']
         cpus_per_task = 16
-        ntasks = 1
-        gpus = 2
         constraint = 'k80'
 
     if script_name == None:

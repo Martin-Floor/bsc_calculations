@@ -37,8 +37,8 @@ def parallel(jobs, cpus=None, script_name='commands'):
     # Write parallel execution scheme #
 
     if cpus == None:
-        print('Number of CPU not given, using 10 by default.')
         cpus = min([len(jobs), 10])
+        print(f'Number of CPU not given, using {cpus} by default.')
 
     if len(jobs) < cpus:
         print('The number of jobs is less than the number of CPU.')
