@@ -54,7 +54,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     if pythonpath == None:
         pythonpath = []
 
-    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd', 'pml', 'netsolp']
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd', 'pml', 'netsolp', 'alphafold']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -133,6 +133,13 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         for i,job in enumerate(jobs):
             if 'NETSOLP_PATH' in jobs[i]:
                 jobs[i] = jobs[i].replace('NETSOLP_PATH', '\/gpfs\/projects\/bsc72\/programs\/netsolp-1.0')
+
+    if program == "alphafold":
+        if modules == None:
+            modules = ["singularity", "alphafold"]
+        else:
+            modules += ["singularity", "alphafold"]
+
 
     if local_libraries:
         pythonpath.append('/gpfs/projects/bsc72/local_libraries/compiled')
