@@ -3,7 +3,7 @@ import os
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
               partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
-              jobs_range=None, group_jobs_by=None, pythonpath=None, local_libraries=False):
+              jobs_range=None, group_jobs_by=None, pythonpath=None, local_libraries=False, msd_version=None):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -54,7 +54,8 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     if pythonpath == None:
         pythonpath = []
 
-    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast', 'msd', 'pml', 'netsolp', 'alphafold']
+    available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
+                          'msd', 'pml', 'netsolp', 'alphafold']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -105,7 +106,11 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             modules = msd_modules
         else:
             modules += msd_modules
-        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+
+        if msd_version == None:
+            conda_env = '/gpfs/projects/bsc72/conda_envs/msd'
+        else:
+            conda_env = '/gpfs/projects/bsc72/conda_envs/msd_'+msd_version
 
     if program == 'blast':
         blast_modules = ['blast']
