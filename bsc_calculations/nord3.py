@@ -3,7 +3,7 @@ import os
 def jobArrays(jobs, script_name=None, job_name=None, tasks=None, cpus_per_task=None, cpus=1,
               mem_per_cpu=None, highmem=False, partition='bsc_ls', threads=None, output=None, mail=None,
               time=48, module_purge=False,  modules=None, conda_env=None, unload_modules=None,
-              program=None, conda_eval_bash=False, jobs_range=None, group_jobs_by=None):
+              program=None, conda_eval_bash=False, jobs_range=None, group_jobs_by=None, mpi=False):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -63,7 +63,10 @@ def jobArrays(jobs, script_name=None, job_name=None, tasks=None, cpus_per_task=N
             modules = pyrosetta_modules
         else:
             modules += pyrosetta_modules
-        conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+        if mpi:
+            conda_env = '/gpfs/projects/bsc72/masoud/conda/envs/EDesignTools-MKL'
+        else:
+            conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
 
     if program == 'pml':
         pml_modules = ['anaconda']
