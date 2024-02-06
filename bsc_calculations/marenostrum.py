@@ -53,9 +53,12 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     # Check PYTHONPATH variable
     if pythonpath == None:
         pythonpath = []
+        
+    if pathmn == None:
+        pathmn = []
 
     available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
-                          'msd', 'pml', 'netsolp', 'alphafold']
+                          'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -147,6 +150,14 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             modules = ["singularity", "alphafold"]
         else:
             modules += ["singularity", "alphafold"]
+    
+    if program == "asitedesign":
+        if modules == None:
+            modules = ["ANACONDA/5.0.1"]
+        else:
+            modules += ["ANACONDA/5.0.1"]
+        pythonpath.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
+        pathmn.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
 
 
     if local_libraries:
@@ -231,6 +242,10 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
 
         for pp in pythonpath:
             sf.write('export PYTHONPATH=$PYTHONPATH:'+pp+'\n')
+            sf.write('\n')
+            
+        for pp in pathmn:
+            sf.write('export PATH=$PATH:'+pp+'\n')
             sf.write('\n')
 
     for i in range(len(jobs)):
