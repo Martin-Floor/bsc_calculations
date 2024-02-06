@@ -293,7 +293,14 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, h
               partition=None, threads=None, output=None, mail=None, time=None,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
 
-    available_programs = ['pele', 'rosetta', 'pyrosetta']
+    # Check PYTHONPATH variable
+    if pythonpath == None:
+        pythonpath = []
+        
+    if pathmn == None:
+        pathmn = []
+
+    available_programs = ['pele', 'rosetta', 'pyrosetta', 'asitedesign']
     if program != None:
         if program not in available_programs:
             raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
@@ -319,6 +326,15 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, h
         else:
             modules += pyrosetta_modules
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+    
+    if program == "asitedesign":
+        if modules == None:
+            modules = ["ANACONDA/5.0.1"]
+        else:
+            modules += ["ANACONDA/5.0.1"]
+        pythonpath.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
+        pathmn.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
+
 
     available_partitions = ['debug', 'bsc_ls']
     if job_name == None:
@@ -394,6 +410,14 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, h
             sf.write('eval "$(conda shell.bash hook)"\n')
         if conda_env != None:
             sf.write('source activate '+conda_env+'\n')
+            sf.write('\n')
+        
+        for pp in pythonpath:
+            sf.write('export PYTHONPATH=$PYTHONPATH:'+pp+'\n')
+            sf.write('\n')
+            
+        for pp in pathmn:
+            sf.write('export PATH=$PATH:'+pp+'\n')
             sf.write('\n')
 
     with open(script_name,'a') as sf:
