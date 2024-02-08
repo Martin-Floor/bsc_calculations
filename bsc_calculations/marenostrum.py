@@ -3,7 +3,7 @@ import os
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
               partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
-              jobs_range=None, group_jobs_by=None, pythonpath=None, local_libraries=False, msd_version=None, mpi=False):
+              jobs_range=None, group_jobs_by=None, pythonpath=None, local_libraries=False, msd_version=None, mpi=False, pathMN=None):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -54,8 +54,8 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     if pythonpath == None:
         pythonpath = []
         
-    if pathmn == None:
-        pathmn = []
+    if pathMN == None:
+        pathMN = []
 
     available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
                           'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -157,7 +157,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         else:
             modules += ["ANACONDA/5.0.1"]
         pythonpath.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
-        pathmn.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
+        pathMN.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
 
 
     if local_libraries:
@@ -244,7 +244,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             sf.write('export PYTHONPATH=$PYTHONPATH:'+pp+'\n')
             sf.write('\n')
             
-        for pp in pathmn:
+        for pp in pathMN:
             sf.write('export PATH=$PATH:'+pp+'\n')
             sf.write('\n')
 
@@ -291,14 +291,14 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder
 
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, highmem=False,
               partition=None, threads=None, output=None, mail=None, time=None,
-              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False):
+              modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False, pathMN=None):
 
     # Check PYTHONPATH variable
     if pythonpath == None:
         pythonpath = []
         
-    if pathmn == None:
-        pathmn = []
+    if pathMN == None:
+        pathMN = []
 
     available_programs = ['pele', 'rosetta', 'pyrosetta', 'asitedesign']
     if program != None:
@@ -333,7 +333,7 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, h
         else:
             modules += ["ANACONDA/5.0.1"]
         pythonpath.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
-        pathmn.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
+        pathMN.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
 
 
     available_partitions = ['debug', 'bsc_ls']
@@ -416,7 +416,7 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, h
             sf.write('export PYTHONPATH=$PYTHONPATH:'+pp+'\n')
             sf.write('\n')
             
-        for pp in pathmn:
+        for pp in pathMN:
             sf.write('export PATH=$PATH:'+pp+'\n')
             sf.write('\n')
 
