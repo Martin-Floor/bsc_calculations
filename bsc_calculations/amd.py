@@ -23,8 +23,9 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None,
         export = [ 'LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/gpfs/projects/bsc72/Link_for_Schrodinger2021',
                    'LIBRARY_PATH=$LIBRARY_PATH:/gpfs/projects/bsc72/Link_for_Schrodinger2021',
                    'PATH=$PATH:/gpfs/projects/bsc72/Link_for_Schrodinger2021',
-                   'PATH=$PATH:/gpfs/projects/bsc72/Schrodinger2021-4',
-                   'SCHRODINGER=/gpfs/projects/bsc72/Schrodinger2021-4']
+                   'LD_PRELOAD=/lib64/libcrypto.so.1.1.1k',
+                   'PATH=$PATH:/gpfs/projects/bsc72/Schrodinger2021-4_2',
+                   'SCHRODINGER=/gpfs/projects/bsc72/Schrodinger2021-4_2']
 
     if job_name == None:
         raise ValueError('job_name == None. You need to specify a name for the job')
