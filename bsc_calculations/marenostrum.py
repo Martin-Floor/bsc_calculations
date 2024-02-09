@@ -153,12 +153,12 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     
     if program == "asitedesign":
         if modules == None:
-            modules = ["gcc/11.2.0_binutils", "openmpi/4.1.2"]
+            modules = ["intel/2017.4", "mkl/2017.4", "bsc/1.0", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
         else:
-            modules += ["gcc/11.2.0_binutils", "openmpi/4.1.2"]
+            modules += ["intel/2017.4", "bsc/1.0", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
         pythonpath.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
         pathMN.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
-
+        conda_env = "/gpfs/projects/bsc72/masoud/conda/envs/EDesignTools-MKL"
 
     if local_libraries:
         pythonpath.append('/gpfs/projects/bsc72/local_libraries/compiled')
@@ -329,11 +329,12 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, h
     
     if program == "asitedesign":
         if modules == None:
-            modules = ["gcc/11.2.0_binutils", "openmpi/4.1.2"]
+            modules = ["intel/2017.4", "mkl/2017.4", "bsc/1.0", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
         else:
-            modules += ["gcc/11.2.0_binutils", "openmpi/4.1.2"]
+            modules += ["intel/2017.4", "bsc/1.0", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
         pythonpath.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
         pathMN.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
+        conda_env = "/gpfs/projects/bsc72/masoud/conda/envs/EDesignTools-MKL"
 
 
     available_partitions = ['debug', 'bsc_ls']
