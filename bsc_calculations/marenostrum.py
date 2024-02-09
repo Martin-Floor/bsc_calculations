@@ -153,9 +153,9 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     
     if program == "asitedesign":
         if modules == None:
-            modules = ["ANACONDA/5.0.1"]
+            modules = ["anaconda", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
         else:
-            modules += ["ANACONDA/5.0.1"]
+            modules += ["anaconda", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
         pythonpath.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
         pathMN.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
 
@@ -329,9 +329,9 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, h
     
     if program == "asitedesign":
         if modules == None:
-            modules = ["ANACONDA/5.0.1"]
+            modules = ["anaconda", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
         else:
-            modules += ["ANACONDA/5.0.1"]
+            modules += ["anaconda", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
         pythonpath.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
         pathMN.append('/gpfs/projects/bsc72/masoud/EDesign_V4')
 
