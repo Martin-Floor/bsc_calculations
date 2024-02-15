@@ -3,7 +3,8 @@ import os
 def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, highmem=False,
               partition='bsc_ls', threads=None, output=None, mail=None, time=48, module_purge=False,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False,
-              jobs_range=None, group_jobs_by=None, pythonpath=None, local_libraries=False, msd_version=None, mpi=False, pathMN=None):
+              jobs_range=None, group_jobs_by=None, pythonpath=None, local_libraries=False, msd_version=None, mpi=False,
+              pathMN=None):
     """
     Set up job array scripts for marenostrum slurm job manager.
 
@@ -53,7 +54,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
     # Check PYTHONPATH variable
     if pythonpath == None:
         pythonpath = []
-        
+
     if pathMN == None:
         pathMN = []
 
@@ -150,7 +151,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
             modules = ["singularity", "alphafold"]
         else:
             modules += ["singularity", "alphafold"]
-    
+
     if program == "asitedesign":
         if modules == None:
             modules = ["intel/2017.4", "mkl/2017.4", "bsc/1.0", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
@@ -243,7 +244,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
         for pp in pythonpath:
             sf.write('export PYTHONPATH=$PYTHONPATH:'+pp+'\n')
             sf.write('\n')
-            
+
         for pp in pathMN:
             sf.write('export PATH=$PATH:'+pp+'\n')
             sf.write('\n')
@@ -283,20 +284,20 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder
     zfill = len(str(len(jobs)))
     with open(general_script, 'w') as ps:
         for i,job in enumerate(jobs):
-            job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
+            job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[1]
             singleJob(job, job_name=job_name, script_name=scripts_folder+'/'+job_name+'.sh', program='pele', **kwargs)
             if print_name:
                 ps.write('echo Launching job '+job_name+'\n')
             ps.write('sbatch '+scripts_folder+'/'+job_name+'.sh\n')
 
 def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, highmem=False,
-              partition=None, threads=None, output=None, mail=None, time=None,
+              partition=None, threads=None, output=None, mail=None, time=None, pythonpath=None,
               modules=None, conda_env=None, unload_modules=None, program=None, conda_eval_bash=False, pathMN=None):
 
     # Check PYTHONPATH variable
     if pythonpath == None:
         pythonpath = []
-        
+
     if pathMN == None:
         pathMN = []
 
@@ -326,7 +327,7 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, h
         else:
             modules += pyrosetta_modules
         conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
-    
+
     if program == "asitedesign":
         if modules == None:
             modules = ["intel/2017.4", "mkl/2017.4", "bsc/1.0", "gcc/11.2.0_binutils", "openmpi/4.1.2"]
@@ -412,11 +413,11 @@ def singleJob(job, script_name=None, job_name=None, cpus=96, mem_per_cpu=None, h
         if conda_env != None:
             sf.write('source activate '+conda_env+'\n')
             sf.write('\n')
-        
+
         for pp in pythonpath:
             sf.write('export PYTHONPATH=$PYTHONPATH:'+pp+'\n')
             sf.write('\n')
-            
+
         for pp in pathMN:
             sf.write('export PATH=$PATH:'+pp+'\n')
             sf.write('\n')
