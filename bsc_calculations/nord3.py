@@ -23,7 +23,7 @@ def jobArrays(
     conda_eval_bash=False,
     jobs_range=None,
     group_jobs_by=None,
-    mpi = False
+    mpi=False,
 ):
     """
     Set up job array scripts for marenostrum slurm job manager.
@@ -72,7 +72,15 @@ def jobArrays(
     elif not isinstance(group_jobs_by, type(None)):
         raise ValueError("You must give an integer to group jobs by this number.")
 
-    available_programs = ["rosetta", "pyrosetta", "pml", "netsolp", "blast", "msd"]
+    available_programs = [
+        "rosetta",
+        "pyrosetta",
+        "pml",
+        "netsolp",
+        "blast",
+        "msd",
+        "alphafold",
+    ]
     if program != None:
         if program not in available_programs:
             raise ValueError(
@@ -93,9 +101,9 @@ def jobArrays(
         else:
             modules += pyrosetta_modules
         if mpi:
-            conda_env = '/gpfs/projects/bsc72/masoud/conda/envs/EDesignTools-MKL'
+            conda_env = "/gpfs/projects/bsc72/masoud/conda/envs/EDesignTools-MKL"
         else:
-            conda_env = '/gpfs/projects/bsc72/conda_envs/pyrosetta'
+            conda_env = "/gpfs/projects/bsc72/conda_envs/pyrosetta"
 
     if program == "pml":
         pml_modules = ["anaconda"]
@@ -141,6 +149,12 @@ def jobArrays(
             modules += blast_modules
 
     available_partitions = ["debug", "bsc_ls"]
+
+    if program == "alphafold":
+        if modules == None:
+            modules = ["singularity", "alphafold"]
+        else:
+            modules += ["singularity", "alphafold"]
 
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
