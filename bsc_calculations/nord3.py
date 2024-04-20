@@ -80,6 +80,7 @@ def jobArrays(
         "blast",
         "msd",
         "alphafold",
+        "hmmer",
     ]
     if program != None:
         if program not in available_programs:
@@ -155,6 +156,14 @@ def jobArrays(
             modules = ["singularity", "alphafold"]
         else:
             modules += ["singularity", "alphafold"]
+
+    if program == "hmmer":
+        hmmer_modules = ["anaconda"]
+        if modules == None:
+            modules = hmmer_modules
+        else:
+            modules += hmmer_modules
+        conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
 
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
