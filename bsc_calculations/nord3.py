@@ -304,6 +304,7 @@ def singleJob(
     unload_modules=None,
     program=None,
     conda_eval_bash=False,
+    exports=None,
 ):
     available_programs = ["pele", "pyrosetta", "pml", "netsolp"]
     if program != None:
@@ -327,7 +328,13 @@ def singleJob(
             "bsc",
         ]
         conda_eval_bash = True
-        conda_env = "/gpfs/projects/bsc72/conda_envs/platform/1.6.3"
+        conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
+        if exports == None:
+            exports = []
+        exports += exports + [
+            "PELE_EXEC=/gpfs/projects/bsc72/PELE++/nord4/V1.8/bin/PELE-1.8",
+            "SCHRODINGER=/gpfs/projects/bsc72/MN4/bsc72/SCHRODINGER_ACADEMIC_NORD",
+        ]
 
     if program == "pyrosetta":
         pyrosetta_modules = ["anaconda"]
@@ -394,6 +401,14 @@ def singleJob(
         if not isinstance(conda_env, str):
             raise ValueError("The conda environment must be given as a string")
 
+    if exports != None:
+        if isinstance(exports, str):
+            exports = [exports]
+        if not isinstance(exports, list):
+            raise ValueError(
+                "Exports to load must be given as a list or as a string (for loading one export only)"
+            )
+
     if isinstance(time, int):
         time = (time, 0)
     if partition == "debug" and cpus > 64:
@@ -452,6 +467,10 @@ def singleJob(
             sf.write('eval "$(conda shell.bash hook)"\n')
         if conda_env != None:
             sf.write("source activate " + conda_env + "\n")
+            sf.write("\n")
+        if exports != None:
+            for export in exports:
+                sf.write(f"export {export}\n")
             sf.write("\n")
 
     with open(script_name, "a") as sf:
