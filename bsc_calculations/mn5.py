@@ -283,7 +283,7 @@ def singleJob(job, script_name=None, job_name=None, cpus=112, mem_per_cpu=None, 
         sf.write('#SBATCH --qos='+partition+'\n')
         sf.write('#SBATCH --time='+str(time[0])+':'+str(time[1])+':00\n')
         sf.write('#SBATCH --ntasks '+str(cpus)+'\n')
-        sf.write('#SBATCH --account='+account)
+        sf.write('#SBATCH --account='+account+'\n')
 
         # Have to check if these work
         # ---
