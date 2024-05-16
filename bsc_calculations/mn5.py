@@ -96,7 +96,8 @@ def jobArrays(
     if program != None:
         if program not in available_programs:
             raise ValueError(
-                "Program not found. Available progams: " + " ,".join(available_programs)
+                "Program not found. Available programs: "
+                + " ,".join(available_programs)
             )
 
     if program == "gromacs":
@@ -104,11 +105,13 @@ def jobArrays(
             modules = ["cuda", "nvidia-hpc-sdk/23.11", "gromacs/2023.3"]
         else:
             modules += ["cuda", "nvidia-hpc-sdk/23.11", "gromacs/2023.3"]
-        extras = ["export SLURM_CPU_BIND=none", 
-                "export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK", 
-                "export GMX_ENABLE_DIRECT_GPU_COMM=1", 
-                "export GMX_GPU_PME_DECOMPOSITION=1", 
-                'GMXBIN="mpirun --bind-to none -report-bindings gmx_mpi"']
+        extras = [
+            "export SLURM_CPU_BIND=none",
+            "export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK",
+            "export GMX_ENABLE_DIRECT_GPU_COMM=1",
+            "export GMX_GPU_PME_DECOMPOSITION=1",
+            'GMXBIN="mpirun --bind-to none -report-bindings gmx_mpi"',
+        ]
 
     if program == "alphafold":
         if modules == None:
@@ -153,7 +156,7 @@ def jobArrays(
 
     if "debug" in partition:
         time = 2
-    elif partition == "gp_bscls":
+    else:
         if time > 48:
             print(
                 "Setting time at maximum allowed for the bsc_ls partition (48 hours)."
@@ -188,7 +191,6 @@ def jobArrays(
             sf.write("#SBATCH --mail-user=" + mail + "\n")
             sf.write("#SBATCH --mail-type=END,FAIL\n")
         sf.write("\n")
-        
 
         if module_purge:
             sf.write("module purge\n")
@@ -216,8 +218,6 @@ def jobArrays(
 
         for extra in extras:
             sf.write(extra + "\n")
-
-
 
     for i in range(len(jobs)):
         with open(script_name, "a") as sf:
