@@ -119,7 +119,7 @@ def jobArrays(
         else:
             modules += ["singularity", "alphafold/2.3.2", "cuda"]
 
-    available_partitions = ["acc_debug", "acc_bscls"]
+    available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
 
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
@@ -174,7 +174,7 @@ def jobArrays(
         sf.write("#SBATCH --qos=" + partition + "\n")
         sf.write("#SBATCH --time=" + str(time) + ":00:00\n")
         sf.write("#SBATCH --ntasks " + str(ntasks) + "\n")
-        if "ac" in partition:
+        if "acc" in partition:
             sf.write("#SBATCH --gres gpu:" + str(gpus) + "\n")
         sf.write("#SBATCH --account=" + account + "\n")
         if highmem:
