@@ -9,7 +9,7 @@ def jobArrays(
     gpus=1,
     mem_per_cpu=None,
     highmem=False,
-    partition="bsc_ls",
+    partition="gp_bscls",
     cpus_per_task=None,
     output=None,
     mail=None,
