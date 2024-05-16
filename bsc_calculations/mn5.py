@@ -28,6 +28,7 @@ def jobArrays(
     msd_version=None,
     mpi=False,
     pathMN=None,
+    extras=None,
 ):
     """
     Set up job array scripts for marenostrum slurm job manager.
