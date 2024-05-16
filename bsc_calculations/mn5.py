@@ -184,7 +184,6 @@ def jobArrays(
             sf.write("#SBATCH --mem-per-cpu " + str(mem_per_cpu) + "\n")
         if cpus_per_task != None:
             sf.write("#SBATCH --cpus-per-task " + str(cpus_per_task) + "\n")
-            sf.write("export SRUN_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}" + "\n")
         sf.write("#SBATCH --array=1-" + str(len(jobs)) + "\n")
         sf.write("#SBATCH --output=" + output + "_%a_%A.out\n")
         sf.write("#SBATCH --error=" + output + "_%a_%A.err\n")
@@ -208,6 +207,9 @@ def jobArrays(
         if conda_env != None:
             sf.write("source activate " + conda_env + "\n")
             sf.write("\n")
+
+        if cpus_per_task != None:
+            sf.write("export SRUN_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}" + "\n")
 
         for pp in pythonpath:
             sf.write("export PYTHONPATH=$PYTHONPATH:" + pp + "\n")
