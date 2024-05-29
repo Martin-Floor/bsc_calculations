@@ -89,7 +89,8 @@ def jobArrays(
     if pathMN == None:
         pathMN = []
 
-    available_programs = ["gromacs", "alphafold"]
+    #! Programs
+    available_programs = ["gromacs", "alphafold", "hmmer"]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -120,6 +121,15 @@ def jobArrays(
         else:
             modules += ["singularity", "alphafold/2.3.2", "cuda"]
 
+    if program == "hmmer":
+        hmmer_modules = ["anaconda"]
+        if modules == None:
+            modules = hmmer_modules
+        else:
+            modules += hmmer_modules
+        conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
+
+    #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
 
     if job_name == None:

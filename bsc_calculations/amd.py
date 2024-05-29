@@ -12,6 +12,7 @@ def jobArrays(
     export=None,
     modules=None,
     conda_env=None,
+    module_purge=None,
     unload_modules=None,
     program="schrodinger",
 ):
@@ -105,6 +106,8 @@ def jobArrays(
             sf.write("#SBATCH --mail-type=END,FAIL\n")
         sf.write("\n")
 
+        if module_purge:
+            sf.write("module purge\n")
         if unload_modules != None:
             for module in unload_modules:
                 sf.write("module unload " + module + "\n")
