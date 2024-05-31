@@ -90,7 +90,7 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer"]
+    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign"]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -128,6 +128,27 @@ def jobArrays(
         else:
             modules += hmmer_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
+
+    if program == "asitedesign":
+        if modules == None:
+            modules = [
+                "intel",
+                "mkl",
+                "bsc/1.0",
+                "gcc/13.2.0",
+                "openmpi/4.1.5-gcc",
+            ]
+        else:
+            modules += [
+                "intel",
+                "mkl",
+                "bsc/1.0",
+                "gcc/13.2.0",
+                "openmpi/4.1.5-gcc",
+            ]
+        pythonpath.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
+        pathMN.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
+        conda_env = "/gpfs/projects/bsc72/MN4/bsc72/masoud/conda/envs/EDesignTools-MKL"
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
