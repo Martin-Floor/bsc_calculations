@@ -23,6 +23,7 @@ def jobArrays(
     conda_eval_bash=False,
     jobs_range=None,
     group_jobs_by=None,
+    msd_version='dyn'
 ):
     """
     Set up job array scripts for marenostrum slurm job manager.
@@ -42,6 +43,10 @@ def jobArrays(
         Group jobs to enter in the same job array (useful for launching many short
         jobs when there are a max_job_allowed limit per user.
     """
+
+    # Check input
+    if isinstance(jobs, str):
+        jobs = [jobs]
 
     # Check input
     if jobs_range != None:
@@ -113,7 +118,7 @@ def jobArrays(
             modules = msd_modules
         else:
             modules += msd_modules
-        conda_env = "/gpfs/projects/bsc72/conda_envs/msd_dyn"
+        conda_env = "/gpfs/projects/bsc72/conda_envs/msd_"+msd_version
 
     if program == "netsolp":
         netsolp_modules = ["anaconda"]

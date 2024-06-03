@@ -58,7 +58,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
                           'msd', 'pml', 'netsolp', 'alphafold']
     if program != None:
         if program not in available_programs:
-            raise ValueError('Program not found. Available progams: '+' ,'.join(available_programs))
+            raise ValueError('Program not found. Available progams: '+', '.join(available_programs))
 
     if program in ['pele', 'peleffy']:
         if modules == None:
@@ -141,9 +141,9 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus=1, mem_per_cpu=None, h
 
     if program == "alphafold":
         if modules == None:
-            modules = ["singularity", "alphafold"]
+            modules = ["singularity", "alphafold/2.3.0"]
         else:
-            modules += ["singularity", "alphafold"]
+            modules += ["singularity", "alphafold/2.3.0"]
 
 
     if local_libraries:
@@ -265,7 +265,10 @@ def setUpPELEForMarenostrum(jobs, general_script='pele_slurm.sh', scripts_folder
     zfill = len(str(len(jobs)))
     with open(general_script, 'w') as ps:
         for i,job in enumerate(jobs):
-            job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
+            if job.split('\n')[0].split('/')[-1] == '0': # Fix for regional spawinings
+                job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-2]
+            else:
+                job_name = str(i+1).zfill(zfill)+'_'+job.split('\n')[0].split('/')[-1]
             singleJob(job, job_name=job_name, script_name=scripts_folder+'/'+job_name+'.sh', program='pele', **kwargs)
             if print_name:
                 ps.write('echo Launching job '+job_name+'\n')

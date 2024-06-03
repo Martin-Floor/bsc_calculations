@@ -47,7 +47,7 @@ def jobArrays(jobs, script_name=None, job_name=None, cpus_per_task=40, gpus=1, n
             modules = ['singularity', 'alphafold/2.1.0_tf2.6.0']
         else:
             modules += ['singularity', 'alphafold/2.1.0_tf2.6.0']
-            
+
         if pythonpath == None:
             pythonpath = ['/opt/conda/lib/python3.7/site-packages']
         else:
