@@ -5,11 +5,12 @@ def jobArrays(
     jobs,
     script_name=None,
     job_name=None,
-    cpus=1,
+    ntasks=1,
+    gpus=1,
     mem_per_cpu=None,
     highmem=False,
-    partition="bsc_ls",
-    threads=None,
+    partition="gp_bscls",
+    cpus_per_task=None,
     output=None,
     mail=None,
     time=48,
@@ -19,6 +20,7 @@ def jobArrays(
     unload_modules=None,
     program=None,
     conda_eval_bash=False,
+    account="bsc72",
     jobs_range=None,
     group_jobs_by=None,
     pythonpath=None,
@@ -26,6 +28,7 @@ def jobArrays(
     msd_version=None,
     mpi=False,
     pathMN=None,
+    extras=[],
 ):
     """
     Set up job array scripts for marenostrum slurm job manager.
@@ -86,164 +89,69 @@ def jobArrays(
     if pathMN == None:
         pathMN = []
 
-    available_programs = [
-        "pele",
-        "peleffy",
-        "rosetta",
-        "predig",
-        "pyrosetta",
-        "rosetta2",
-        "blast",
-        "msd",
-        "pml",
-        "netsolp",
-        "alphafold",
-        "asitedesign",
-        "epPred",
-    ]
+    #! Programs
+    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign"]
+
+    # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
+    #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
+
     if program != None:
         if program not in available_programs:
-            raise ValueError('Program not found. Available progams: '+', '.join(available_programs))
+            raise ValueError(
+                "Program not found. Available programs: "
+                + " ,".join(available_programs)
+            )
 
-    if program in ["pele", "peleffy"]:
+    if program == "gromacs":
         if modules == None:
-            modules = []
-        modules += modules + [
-            "ANACONDA/2019.10",
-            "intel",
-            "mkl",
-            "impi",
-            "gcc",
-            "boost/1.64.0",
+            modules = ["cuda", "nvidia-hpc-sdk/23.11", "gromacs/2023.3"]
+        else:
+            modules += ["cuda", "nvidia-hpc-sdk/23.11", "gromacs/2023.3"]
+        extras = [
+            "export SLURM_CPU_BIND=none",
+            "export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK",
+            "export GMX_ENABLE_DIRECT_GPU_COMM=1",
+            "export GMX_GPU_PME_DECOMPOSITION=1",
+            'GMXBIN="mpirun --bind-to none -report-bindings gmx_mpi"',
         ]
-        conda_eval_bash = True
-        if program == "pele":
-            conda_env = "/gpfs/projects/bsc72/conda_envs/platform/1.6.3"
-        elif program == "peleffy":
-            conda_env = "/gpfs/projects/bsc72/conda_envs/peleffy/1.3.4"
-
-    if program == "rosetta":
-        rosetta_modules = ["gcc/7.2.0", "impi/2017.4", "rosetta/3.13"]
-        if modules == None:
-            modules = rosetta_modules
-        else:
-            modules += rosetta_modules
-
-    if program == "rosetta2":
-        rosetta2_modules = ["rosetta/2.3.1"]
-        if modules == None:
-            modules = rosetta2_modules
-        else:
-            modules += rosetta2_modules
-
-    if program == "pyrosetta":
-        pyrosetta_modules = ["ANACONDA/2019.10"]
-        if modules == None:
-            modules = pyrosetta_modules
-        else:
-            modules += pyrosetta_modules
-        if mpi:
-            conda_env = "/gpfs/projects/bsc72/masoud/conda/envs/EDesignTools-MKL"
-        else:
-            conda_env = "/gpfs/projects/bsc72/conda_envs/pyrosetta"
-
-    if program == "pml":
-        pml_modules = ["ANACONDA/2019.10"]
-        if modules == None:
-            modules = pml_modules
-        else:
-            modules += pml_modules
-        conda_env = "/gpfs/projects/bsc72/conda_envs/pml"
-
-    if program == "msd":
-        msd_modules = ["gcc/7.2.0", "impi/2017.4", "rosetta/3.13", "ANACONDA/2019.10"]
-        if modules == None:
-            modules = msd_modules
-        else:
-            modules += msd_modules
-
-        if msd_version == None:
-            conda_env = "/gpfs/projects/bsc72/conda_envs/msd"
-        else:
-            conda_env = "/gpfs/projects/bsc72/conda_envs/msd_" + msd_version
-
-    if program == "blast":
-        blast_modules = ["blast"]
-        if modules == None:
-            modules = blast_modules
-        else:
-            modules += blast_modules
-
-    if program == "predig":
-        if modules == None:
-            modules = []
-        modules += ["miniconda3"]
-        conda_eval_bash = True
-        if program == "predig":
-            conda_env = "/home/bsc72/bsc72040/miniconda3/envs/predig"
-
-    if program == "netsolp":
-        netsolp_modules = ["ANACONDA/2019.10"]
-        if modules == None:
-            modules = netsolp_modules
-        else:
-            modules += netsolp_modules
-        conda_env = "/gpfs/projects/bsc72/conda_envs/netsolp"
-
-        for i, job in enumerate(jobs):
-            if "NETSOLP_PATH" in jobs[i]:
-                jobs[i] = jobs[i].replace(
-                    "NETSOLP_PATH", "\/gpfs\/projects\/bsc72\/programs\/netsolp-1.0"
-                )
 
     if program == "alphafold":
         if modules == None:
-            modules = ["singularity", "alphafold/2.3.0"]
+            modules = ["singularity", "alphafold/2.3.2", "cuda"]
         else:
-            modules += ["singularity", "alphafold/2.3.0"]
+            modules += ["singularity", "alphafold/2.3.2", "cuda"]
+
+    if program == "hmmer":
+        hmmer_modules = ["anaconda"]
+        if modules == None:
+            modules = hmmer_modules
+        else:
+            modules += hmmer_modules
+        conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
 
     if program == "asitedesign":
         if modules == None:
             modules = [
-                "intel/2017.4",
-                "mkl/2017.4",
-                "bsc/1.0",
-                "gcc/11.2.0_binutils",
-                "openmpi/4.1.2",
-            ]
-        else:
-            modules += [
-                "intel/2017.4",
-                "bsc/1.0",
-                "gcc/11.2.0_binutils",
-                "openmpi/4.1.2",
-            ]
-        pythonpath.append("/gpfs/projects/bsc72/masoud/EDesign_V4")
-        pathMN.append("/gpfs/projects/bsc72/masoud/EDesign_V4")
-        conda_env = "/gpfs/projects/bsc72/masoud/conda/envs/EDesignTools-MKL"
-
-    if program == "epPred":
-        if modules == None:
-            modules = [
-                "ANACONDA/2019.10",
-                "gcc/7.2.0",
-                "impi/2017.4",
-                "rosetta/3.13",
-            ]
-        else:
-            modules += [
-                "anaconda",
-                "gcc",
-                "impi",
+                "intel",
                 "mkl",
-                "python",
+                "bsc/1.0",
+                "gcc/13.2.0",
+                "openmpi/4.1.5-gcc",
             ]
-        conda_env = "/gpfs/projects/bsc72/conda_envs/epPred"
+        else:
+            modules += [
+                "intel",
+                "mkl",
+                "bsc/1.0",
+                "gcc/13.2.0",
+                "openmpi/4.1.5-gcc",
+            ]
+        pythonpath.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
+        pathMN.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
+        conda_env = "/gpfs/projects/bsc72/MN4/bsc72/masoud/conda/envs/EDesignTools-MKL"
 
-    if local_libraries:
-        pythonpath.append("/gpfs/projects/bsc72/local_libraries/compiled")
-
-    available_partitions = ["debug", "bsc_ls"]
+    #! Partitions
+    available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
 
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
@@ -278,9 +186,9 @@ def jobArrays(
         if not isinstance(conda_env, str):
             raise ValueError("The conda environment must be given as a string")
 
-    if partition == "debug":
+    if "debug" in partition:
         time = 2
-    elif partition == "bsc_ls":
+    else:
         if time > 48:
             print(
                 "Setting time at maximum allowed for the bsc_ls partition (48 hours)."
@@ -297,13 +205,16 @@ def jobArrays(
         sf.write("#SBATCH --job-name=" + job_name + "\n")
         sf.write("#SBATCH --qos=" + partition + "\n")
         sf.write("#SBATCH --time=" + str(time) + ":00:00\n")
-        sf.write("#SBATCH --ntasks " + str(cpus) + "\n")
+        sf.write("#SBATCH --ntasks " + str(ntasks) + "\n")
+        if "acc" in partition:
+            sf.write("#SBATCH --gres gpu:" + str(gpus) + "\n")
+        sf.write("#SBATCH --account=" + account + "\n")
         if highmem:
             sf.write("#SBATCH --constraint=highmem\n")
         if mem_per_cpu != None:
             sf.write("#SBATCH --mem-per-cpu " + str(mem_per_cpu) + "\n")
-        if threads != None:
-            sf.write("#SBATCH -c " + str(threads) + "\n")
+        if cpus_per_task != None:
+            sf.write("#SBATCH --cpus-per-task " + str(cpus_per_task) + "\n")
         sf.write("#SBATCH --array=1-" + str(len(jobs)) + "\n")
         sf.write("#SBATCH --output=" + output + "_%a_%A.out\n")
         sf.write("#SBATCH --error=" + output + "_%a_%A.err\n")
@@ -328,6 +239,9 @@ def jobArrays(
             sf.write("source activate " + conda_env + "\n")
             sf.write("\n")
 
+        if cpus_per_task != None:
+            sf.write("export SRUN_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}" + "\n")
+
         for pp in pythonpath:
             sf.write("export PYTHONPATH=$PYTHONPATH:" + pp + "\n")
             sf.write("\n")
@@ -335,6 +249,9 @@ def jobArrays(
         for pp in pathMN:
             sf.write("export PATH=$PATH:" + pp + "\n")
             sf.write("\n")
+
+        for extra in extras:
+            sf.write(extra + "\n")
 
     for i in range(len(jobs)):
         with open(script_name, "a") as sf:
@@ -394,7 +311,7 @@ def singleJob(
     job,
     script_name=None,
     job_name=None,
-    cpus=96,
+    cpus=112,
     mem_per_cpu=None,
     highmem=False,
     partition=None,
@@ -403,6 +320,7 @@ def singleJob(
     mail=None,
     time=None,
     pythonpath=None,
+    account="bsc72",
     modules=None,
     conda_env=None,
     unload_modules=None,
@@ -418,7 +336,7 @@ def singleJob(
     if pathMN == None:
         pathMN = []
 
-    available_programs = ["pele", "rosetta", "pyrosetta", "asitedesign"]
+    available_programs = ["pele"]
     if program != None:
         if program not in available_programs:
             raise ValueError(
@@ -429,52 +347,19 @@ def singleJob(
         if modules == None:
             modules = []
         modules += modules + [
-            "ANACONDA/2019.10",
             "intel",
-            "mkl",
             "impi",
-            "gcc",
-            "boost/1.64.0",
+            "mkl",
+            "cmake",
+            "boost",
+            "anaconda",
+            "bsc",
+            "transfer",
         ]
         conda_eval_bash = True
-        conda_env = "/gpfs/projects/bsc72/conda_envs/platform/1.6.3"
+        conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
 
-    if program == "rosetta":
-        rosetta_modules = ["gcc/7.2.0", "impi/2017.4", "rosetta/3.13"]
-        if modules == None:
-            modules = rosetta_modules
-        else:
-            modules += rosetta_modules
-
-    if program == "pyrosetta":
-        pyrosetta_modules = ["ANACONDA/2019.10"]
-        if modules == None:
-            modules = pyrosetta_modules
-        else:
-            modules += pyrosetta_modules
-        conda_env = "/gpfs/projects/bsc72/conda_envs/pyrosetta"
-
-    if program == "asitedesign":
-        if modules == None:
-            modules = [
-                "intel/2017.4",
-                "mkl/2017.4",
-                "bsc/1.0",
-                "gcc/11.2.0_binutils",
-                "openmpi/4.1.2",
-            ]
-        else:
-            modules += [
-                "intel/2017.4",
-                "bsc/1.0",
-                "gcc/11.2.0_binutils",
-                "openmpi/4.1.2",
-            ]
-        pythonpath.append("/gpfs/projects/bsc72/masoud/EDesign_V4")
-        pathMN.append("/gpfs/projects/bsc72/masoud/EDesign_V4")
-        conda_env = "/gpfs/projects/bsc72/masoud/conda/envs/EDesignTools-MKL"
-
-    available_partitions = ["debug", "bsc_ls"]
+    available_partitions = ["gp_debug", "gp_bscls"]
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
     if output == None:
@@ -511,15 +396,15 @@ def singleJob(
 
     if isinstance(time, int):
         time = (time, 0)
-    if partition == "debug" and time == None:
+    if partition == "gp_debug" and time == None:
         time = (2, 0)
-    elif partition == "debug" and time != None:
+    elif partition == "gp_debug" and time != None:
         if time[0] * 60 + time[1] > 120:
             print("Setting time at maximum allowed for the debug partition (2 hours).")
             time = (2, 0)
-    elif partition == "bsc_ls" and time == None:
+    elif partition == "gp_bscls" and time == None:
         time = (48, 0)
-    elif partition == "bsc_ls" and time != None:
+    elif partition == "gp_bscls" and time != None:
         if time[0] * 60 + time[1] > 2880:
             print(
                 "Setting time at maximum allowed for the bsc_ls partition (48 hours)."
@@ -533,6 +418,10 @@ def singleJob(
         sf.write("#SBATCH --qos=" + partition + "\n")
         sf.write("#SBATCH --time=" + str(time[0]) + ":" + str(time[1]) + ":00\n")
         sf.write("#SBATCH --ntasks " + str(cpus) + "\n")
+        sf.write("#SBATCH --account=" + account + "\n")
+
+        # Have to check if these work
+        # ---
         if highmem:
             sf.write("#SBATCH --constraint=highmem\n")
         if mem_per_cpu != None:
@@ -545,12 +434,14 @@ def singleJob(
             sf.write("#SBATCH --mail-user=" + mail + "\n")
             sf.write("#SBATCH --mail-type=END,FAIL\n")
         sf.write("\n")
+        # ---
 
         if unload_modules != None:
             for module in unload_modules:
                 sf.write("module unload " + module + "\n")
             sf.write("\n")
         if modules != None:
+            sf.write("module purge \n")
             for module in modules:
                 sf.write("module load " + module + "\n")
             sf.write("\n")

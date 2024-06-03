@@ -4,3 +4,4 @@ from . import local
 from . import cte_power
 from . import amd
 from . import nord3
+from . import mn5
