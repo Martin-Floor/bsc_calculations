@@ -90,7 +90,7 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign"]
+    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast"]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -120,6 +120,12 @@ def jobArrays(
             modules = ["singularity", "alphafold/2.3.2", "cuda"]
         else:
             modules += ["singularity", "alphafold/2.3.2", "cuda"]
+
+    if program == 'blast':
+        if modules == None:
+            modules = ["blast"]
+        else:
+            modules += ["blast"]
 
     if program == "hmmer":
         hmmer_modules = ["anaconda"]
