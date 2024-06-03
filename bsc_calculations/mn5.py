@@ -131,24 +131,12 @@ def jobArrays(
 
     if program == "asitedesign":
         if modules == None:
-            modules = [
-                "intel",
-                "mkl",
-                "bsc/1.0",
-                "gcc/13.2.0",
-                "openmpi/4.1.5-gcc",
-            ]
+            modules = ["anaconda", "intel", "openmpi", "mkl", "gcc", "bsc"]
         else:
-            modules += [
-                "intel",
-                "mkl",
-                "bsc/1.0",
-                "gcc/13.2.0",
-                "openmpi/4.1.5-gcc",
-            ]
-        pythonpath.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
-        pathMN.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
-        conda_env = "/gpfs/projects/bsc72/MN4/bsc72/masoud/conda/envs/EDesignTools-MKL"
+            modules += ["anaconda", "intel", "openmpi", "mkl", "gcc", "bsc"]
+        pythonpath.append("/gpfs/projects/bsc72/Repos/AsiteDesign")
+        pathMN.append("/gpfs/projects/bsc72/Repos/AsiteDesign")
+        conda_env = "/gpfs/projects/bsc72/conda_envs/asite"
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
