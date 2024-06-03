@@ -47,6 +47,10 @@ def jobArrays(
     """
 
     # Check input
+    if isinstance(jobs, str):
+        jobs = [jobs]
+
+    # Check input
     if jobs_range != None:
         if (
             not isinstance(jobs_range, (list, tuple))
@@ -136,7 +140,7 @@ def jobArrays(
             modules = msd_modules
         else:
             modules += msd_modules
-        conda_env = "/gpfs/projects/bsc72/conda_envs/msd_dyn"
+        conda_env = "/gpfs/projects/bsc72/conda_envs/msd_"+msd_version
 
     if program == "netsolp":
         netsolp_modules = ["anaconda"]
