@@ -115,6 +115,12 @@ def jobArrays(
             'GMXBIN="mpirun --bind-to none -report-bindings gmx_mpi"',
         ]
 
+        # Update mpi and omp options to match cpu and gpus
+        gromacs_jobs = []
+        for job in jobs:
+            gromacs_jobs.append(job.replace('mdrun', f'mdrun -pin on -pinoffset 0'))
+        jobs = gromacs_jobs
+
     if program == "alphafold":
         if modules == None:
             modules = ["singularity", "alphafold/2.3.2", "cuda"]
