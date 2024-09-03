@@ -90,7 +90,7 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast"]
+    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "openmm"]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -120,6 +120,15 @@ def jobArrays(
         for job in jobs:
             gromacs_jobs.append(job.replace('mdrun', f'mdrun -pin on -pinoffset 0'))
         jobs = gromacs_jobs
+
+    if program == 'openmm':
+        openmm_modules = ["anaconda", "cuda/11.8"]
+        if modules == None:
+            modules = openmm_modules
+        else:
+            modules += openmm_modules
+
+        conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
 
     if program == "alphafold":
         if modules == None:
@@ -274,6 +283,7 @@ def setUpPELEForMarenostrum(
     general_script="pele_slurm.sh",
     scripts_folder="pele_slurm_scripts",
     print_name=False,
+    partition='gp_bscls',
     **kwargs
 ):
     """
@@ -300,6 +310,7 @@ def setUpPELEForMarenostrum(
                 job_name=job_name,
                 script_name=scripts_folder + "/" + job_name + ".sh",
                 program="pele",
+                partition=partition,
                 **kwargs
             )
             if print_name:
