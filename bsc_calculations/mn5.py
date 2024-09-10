@@ -115,6 +115,25 @@ def jobArrays(
             'GMXBIN="mpirun --bind-to none -report-bindings gmx_mpi"',
         ]
 
+        if cpus_per_task > 1:
+            warning_message = """
+            ----------------------------------------------------------------------------------------------
+            |                                          WARNING                                           |
+            ----------------------------------------------------------------------------------------------
+
+            With cpus_per_task != 1 you might encounter the following 
+            GROMACS error:
+
+            | Fatal error:
+            | There is no domain decomposition for {cpus_per_task} ranks that is
+            | compatible with the given box and a minimum cell size of 
+            | ___ nm
+            | Change the number of ranks or mdrun option -rcon or -dds or 
+            | your LINCS settings. Look in the log file for details on the
+            | domain decomposition
+            """
+            print(warning_message)
+
         # Update mpi and omp options to match cpu and gpus
         gromacs_jobs = []
         for job in jobs:
