@@ -90,7 +90,7 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer"]
+    available_programs = ["gromacs", "alphafold", "hmmer","Q6"]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -128,6 +128,13 @@ def jobArrays(
         else:
             modules += hmmer_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
+
+    if program == 'Q6':
+        q6_modules = ['oneapi','q6']
+        if modules == None:
+            modules = q6_modules
+        else:
+            modules += q6_modules
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
