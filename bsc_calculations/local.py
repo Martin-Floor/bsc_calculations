@@ -36,14 +36,21 @@ def parallel(jobs, cpus=None, script_name='commands'):
     """
     # Write parallel execution scheme #
 
+    if jobs == []:
+        raise ValueError('The jobs list is empty!')
+
+    # Check input
+    if isinstance(jobs, str):
+        jobs = [jobs]
+
     if cpus == None:
         cpus = min([len(jobs), 10])
         print(f'Number of CPU not given, using {cpus} by default.')
 
     if len(jobs) < cpus:
         print('The number of jobs is less than the number of CPU.')
-        cpu = len(jobs)
-        print('Using %s CPU' % cpu)
+        cpus = len(jobs)
+        print('Using %s CPU' % cpus)
 
     # Open script files
     zf = len(str(cpus))

@@ -90,7 +90,7 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer","Q6"]
+    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "openmm","Q6"]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -115,11 +115,51 @@ def jobArrays(
             'GMXBIN="mpirun --bind-to none -report-bindings gmx_mpi"',
         ]
 
+        if cpus_per_task > 1:
+            warning_message = """
+            ----------------------------------------------------------------------------------------------
+            |                                          WARNING                                           |
+            ----------------------------------------------------------------------------------------------
+
+            With cpus_per_task != 1 you might encounter the following
+            GROMACS error:
+
+            | Fatal error:
+            | There is no domain decomposition for {cpus_per_task} ranks that is
+            | compatible with the given box and a minimum cell size of
+            | ___ nm
+            | Change the number of ranks or mdrun option -rcon or -dds or
+            | your LINCS settings. Look in the log file for details on the
+            | domain decomposition
+            """
+            print(warning_message)
+
+        # Update mpi and omp options to match cpu and gpus
+        gromacs_jobs = []
+        for job in jobs:
+            gromacs_jobs.append(job.replace('mdrun', f'mdrun -pin on -pinoffset 0'))
+        jobs = gromacs_jobs
+
+    if program == 'openmm':
+        openmm_modules = ["anaconda", "cuda/11.8"]
+        if modules == None:
+            modules = openmm_modules
+        else:
+            modules += openmm_modules
+
+        conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
+
     if program == "alphafold":
         if modules == None:
             modules = ["singularity", "alphafold/2.3.2", "cuda"]
         else:
             modules += ["singularity", "alphafold/2.3.2", "cuda"]
+
+    if program == 'blast':
+        if modules == None:
+            modules = ["blast"]
+        else:
+            modules += ["blast"]
 
     if program == "hmmer":
         hmmer_modules = ["anaconda"]
@@ -135,6 +175,15 @@ def jobArrays(
             modules = q6_modules
         else:
             modules += q6_modules
+
+    if program == "asitedesign":
+        if modules == None:
+            modules = ["anaconda", "intel", "openmpi", "mkl", "gcc", "bsc"]
+        else:
+            modules += ["anaconda", "intel", "openmpi", "mkl", "gcc", "bsc"]
+        pythonpath.append("/gpfs/projects/bsc72/Repos/AsiteDesign")
+        pathMN.append("/gpfs/projects/bsc72/Repos/AsiteDesign")
+        conda_env = "/gpfs/projects/bsc72/conda_envs/asite"
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
@@ -260,6 +309,7 @@ def setUpPELEForMarenostrum(
     general_script="pele_slurm.sh",
     scripts_folder="pele_slurm_scripts",
     print_name=False,
+    partition='gp_bscls',
     **kwargs
 ):
     """
@@ -286,6 +336,7 @@ def setUpPELEForMarenostrum(
                 job_name=job_name,
                 script_name=scripts_folder + "/" + job_name + ".sh",
                 program="pele",
+                partition=partition,
                 **kwargs
             )
             if print_name:

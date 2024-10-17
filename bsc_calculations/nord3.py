@@ -24,6 +24,8 @@ def jobArrays(
     jobs_range=None,
     group_jobs_by=None,
     mpi=False,
+    pythonpath=None,
+    pathMN=None,
 ):
     """
     Set up job array scripts for marenostrum slurm job manager.
@@ -43,6 +45,10 @@ def jobArrays(
         Group jobs to enter in the same job array (useful for launching many short
         jobs when there are a max_job_allowed limit per user.
     """
+
+    # Check input
+    if isinstance(jobs, str):
+        jobs = [jobs]
 
     # Check input
     if jobs_range != None:
@@ -72,6 +78,13 @@ def jobArrays(
     elif not isinstance(group_jobs_by, type(None)):
         raise ValueError("You must give an integer to group jobs by this number.")
 
+    # Check PYTHONPATH variable
+    if pythonpath == None:
+        pythonpath = []
+
+    if pathMN == None:
+        pathMN = []
+
     available_programs = [
         "rosetta",
         "pyrosetta",
@@ -81,7 +94,8 @@ def jobArrays(
         "msd",
         "alphafold",
         "hmmer",
-        "Q6",
+        "asitedesign",
+        "Q6"
     ]
     if program != None:
         if program not in available_programs:
@@ -127,7 +141,7 @@ def jobArrays(
             modules = msd_modules
         else:
             modules += msd_modules
-        conda_env = "/gpfs/projects/bsc72/conda_envs/msd_dyn"
+        conda_env = "/gpfs/projects/bsc72/conda_envs/msd_"+msd_version
 
     if program == "netsolp":
         netsolp_modules = ["anaconda"]
@@ -172,6 +186,25 @@ def jobArrays(
             modules = q6_modules
         else:
             modules += q6_modules
+
+    if program == "asitedesign":
+        if modules == None:
+            modules = [
+                "anaconda",
+                "mkl",
+                "bsc/1.0",
+                "gcc/10.1.0" "openmpi/4.1.3",
+            ]
+        else:
+            modules += [
+                "anaconda",
+                "mkl",
+                "bsc/1.0",
+                "gcc/10.1.0" "openmpi/4.1.3",
+            ]
+        pythonpath.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
+        pathMN.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
+        conda_env = "/gpfs/projects/bsc72/MN4/bsc72/masoud/conda/envs/EDesignTools-MKL"
 
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
@@ -275,6 +308,14 @@ def jobArrays(
             sf.write('eval "$(conda shell.bash hook)"\n')
         if conda_env != None:
             sf.write("source activate " + conda_env + "\n")
+            sf.write("\n")
+
+        for pp in pythonpath:
+            sf.write("export PYTHONPATH=$PYTHONPATH:" + pp + "\n")
+            sf.write("\n")
+
+        for pp in pathMN:
+            sf.write("export PATH=$PATH:" + pp + "\n")
             sf.write("\n")
 
     for i in range(len(jobs)):

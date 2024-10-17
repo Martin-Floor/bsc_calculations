@@ -103,9 +103,7 @@ def jobArrays(
     ]
     if program != None:
         if program not in available_programs:
-            raise ValueError(
-                "Program not found. Available progams: " + " ,".join(available_programs)
-            )
+            raise ValueError('Program not found. Available progams: '+', '.join(available_programs))
 
     if program in ["pele", "peleffy"]:
         if modules == None:
@@ -200,9 +198,9 @@ def jobArrays(
 
     if program == "alphafold":
         if modules == None:
-            modules = ["singularity", "alphafold"]
+            modules = ["singularity", "alphafold/2.3.0"]
         else:
-            modules += ["singularity", "alphafold"]
+            modules += ["singularity", "alphafold/2.3.0"]
 
     if program == "asitedesign":
         if modules == None:
