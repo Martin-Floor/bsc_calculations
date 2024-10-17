@@ -81,6 +81,7 @@ def jobArrays(
         "msd",
         "alphafold",
         "hmmer",
+        "Q6",
     ]
     if program != None:
         if program not in available_programs:
@@ -102,9 +103,9 @@ def jobArrays(
         else:
             modules += pyrosetta_modules
         if mpi:
-            conda_env = "/gpfs/projects/bsc72/masoud/conda/envs/EDesignTools-MKL"
+            conda_env = "/gpfs/projects/bsc72/conda_envs/mood"
         else:
-            conda_env = "/gpfs/projects/bsc72/conda_envs/pyrosetta"
+            conda_env = "/gpfs/projects/bsc72/MN4/bsc72/conda_envs/pyrosetta"
 
     if program == "pml":
         pml_modules = ["anaconda"]
@@ -164,6 +165,13 @@ def jobArrays(
         else:
             modules += hmmer_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
+
+    if program == 'Q6':
+        q6_modules = ['q6']
+        if modules == None:
+            modules = q6_modules
+        else:
+            modules += q6_modules
 
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
