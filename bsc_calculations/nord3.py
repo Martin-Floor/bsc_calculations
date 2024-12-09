@@ -95,7 +95,8 @@ def jobArrays(
         "alphafold",
         "hmmer",
         "asitedesign",
-        "Q6"
+        "Q6",
+        "proteinmpnn"
     ]
     if program != None:
         if program not in available_programs:
@@ -103,6 +104,14 @@ def jobArrays(
                 "Program not found. Available progams: " + " ,".join(available_programs)
             )
 
+    if program == "proteinmpnn":
+        proteinmpnn_modules = ["openmpi/4.0.2", "anaconda"]
+        if modules == None:
+            modules = proteinmpnn_modules
+        else:
+            modules += proteinmpnn_modules
+        conda_env = "/gpfs/projects/bsc72/conda_envs/lib_prot"
+    
     if program == "rosetta":
         rosetta_modules = ["intel/2021.4", "impi/2021.4", "mkl/2021.4", "rosetta/3.13"]
         if modules == None:

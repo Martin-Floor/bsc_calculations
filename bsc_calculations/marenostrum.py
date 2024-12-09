@@ -100,6 +100,7 @@ def jobArrays(
         "alphafold",
         "asitedesign",
         "epPred",
+        "proteinmpnn"
     ]
     if program != None:
         if program not in available_programs:
@@ -174,6 +175,14 @@ def jobArrays(
         else:
             modules += blast_modules
 
+    if program == "proteinmpnn":
+        proteinmpnn_modules = ["ucx/1.16.0-gcc", "openmpi/5.0.5-gcc", "anaconda"]
+        if modules == None:
+            modules = proteinmpnn_modules
+        else:
+            modules += proteinmpnn_modules
+        conda_env = "/gpfs/projects/bsc72/conda_envs/lib_prot"
+    
     if program == "predig":
         if modules == None:
             modules = []
