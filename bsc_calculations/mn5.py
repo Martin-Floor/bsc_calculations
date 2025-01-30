@@ -90,7 +90,7 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "openmm","Q6"]
+    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6"]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -161,6 +161,17 @@ def jobArrays(
         else:
             modules += ["blast"]
 
+    if program == 'pyrosetta':
+        pyrosetta_modules = []
+        if modules == None:
+            modules = pyrosetta_modules
+        else:
+            modules += pyrosetta_modules
+        if mpi:
+            conda_env = "/gpfs/projects/bsc72/conda_envs/mood"
+        else:
+            conda_env = "/gpfs/projects/bsc72/MN4/bsc72/conda_envs/pyrosetta"
+
     if program == "hmmer":
         hmmer_modules = ["anaconda"]
         if modules == None:
@@ -175,6 +186,8 @@ def jobArrays(
             modules = q6_modules
         else:
             modules += q6_modules
+
+        extras = ['source /home/bsc/bsc072181/programs/qtools/bin/qtools/qtools_init.sh']
 
     if program == "asitedesign":
         if modules == None:
