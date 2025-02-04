@@ -90,7 +90,8 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6"]
+    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6", 
+                          "bioml"]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -148,6 +149,18 @@ def jobArrays(
             modules += openmm_modules
 
         conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
+    
+    
+    if program == 'bioml':
+        bioml_modules = ["anaconda", "perl/5.38.2"]
+        module_purge = True
+        if modules == None:
+            modules = bioml_modules
+        else:
+            modules += bioml_modules
+
+        conda_env = "/gpfs/projects/bsc72/conda_envs/bioml"
+    
 
     if program == "alphafold":
         if modules == None:
