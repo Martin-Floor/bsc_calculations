@@ -29,6 +29,7 @@ def jobArrays(
     mpi=False,
     pathMN=None,
     extras=[],
+    exports=None,
 ):
     """
     Set up job array scripts for marenostrum slurm job manager.
@@ -90,7 +91,7 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "openmm"]
+    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "openmm", "rosetta", 'bioemu']
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -158,6 +159,23 @@ def jobArrays(
         pythonpath.append("/gpfs/projects/bsc72/Repos/AsiteDesign")
         pathMN.append("/gpfs/projects/bsc72/Repos/AsiteDesign")
         conda_env = "/gpfs/projects/bsc72/conda_envs/asite"
+
+    if program == 'rosetta':
+        rosetta_modules = ['gcc/12.3.0', 'rosetta/3.14']
+        if modules == None:
+            modules = rosetta_modules
+        else:
+            modules += rosetta_modules
+
+    if program == 'bioemu':
+        if modules == None:
+            modules = ["anaconda"]
+        else:
+            modules += ["anaconda"]
+        conda_env = '/gpfs/projects/bsc72/conda_envs/bioemu'
+        if exports == None:
+            exports = []
+        exports += ['COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu/colabfold']
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
@@ -248,6 +266,11 @@ def jobArrays(
             sf.write("source activate " + conda_env + "\n")
             sf.write("\n")
 
+        if exports != None:
+            for export in exports:
+                sf.write(f"export {export}\n")
+            sf.write("\n")
+
         if cpus_per_task != None:
             sf.write("export SRUN_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}" + "\n")
 
@@ -322,7 +345,9 @@ def singleJob(
     job,
     script_name=None,
     job_name=None,
-    cpus=112,
+    ntasks=1,
+    cpus_per_task=112,
+    gpus=1,
     mem_per_cpu=None,
     highmem=False,
     partition=None,
@@ -338,6 +363,7 @@ def singleJob(
     program=None,
     conda_eval_bash=False,
     pathMN=None,
+    exports=None,
 ):
 
     # Check PYTHONPATH variable
@@ -369,8 +395,13 @@ def singleJob(
         ]
         conda_eval_bash = True
         conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
+        if exports == None:
+            exports = []
+        exports += exports + [
+            "PELE_EXEC=/gpfs/projects/bsc72/PELE++/nord4/V1.8/bin/PELE-1.8",
+        ]
 
-    available_partitions = ["gp_debug", "gp_bscls"]
+    available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
     if output == None:
@@ -405,17 +436,25 @@ def singleJob(
         if not isinstance(conda_env, str):
             raise ValueError("The conda environment must be given as a string")
 
+    if exports != None:
+        if isinstance(exports, str):
+            exports = [exports]
+        if not isinstance(exports, list):
+            raise ValueError(
+                "Exports to load must be given as a list or as a string (for loading one export only)"
+            )
+
     if isinstance(time, int):
         time = (time, 0)
-    if partition == "gp_debug" and time == None:
+    if partition in ["gp_debug", "acc_debug"] and time == None:
         time = (2, 0)
-    elif partition == "gp_debug" and time != None:
+    elif partition in ["gp_debug", "acc_debug"] and time != None:
         if time[0] * 60 + time[1] > 120:
             print("Setting time at maximum allowed for the debug partition (2 hours).")
             time = (2, 0)
-    elif partition == "gp_bscls" and time == None:
+    elif partition in ["gp_bscls", "acc_bscls"] and time == None:
         time = (48, 0)
-    elif partition == "gp_bscls" and time != None:
+    elif partition in ["gp_bscls", "acc_bscls"] and time != None:
         if time[0] * 60 + time[1] > 2880:
             print(
                 "Setting time at maximum allowed for the bsc_ls partition (48 hours)."
@@ -428,9 +467,11 @@ def singleJob(
         sf.write("#SBATCH --job-name=" + job_name + "\n")
         sf.write("#SBATCH --qos=" + partition + "\n")
         sf.write("#SBATCH --time=" + str(time[0]) + ":" + str(time[1]) + ":00\n")
-        sf.write("#SBATCH --ntasks " + str(cpus) + "\n")
+        sf.write("#SBATCH --ntasks " + str(ntasks) + "\n")
+        sf.write("#SBATCH --cpus-per-task " + str(cpus_per_task) + "\n")
         sf.write("#SBATCH --account=" + account + "\n")
-
+        if "acc" in partition:
+            sf.write("#SBATCH --gres gpu:" + str(gpus) + "\n")
         # Have to check if these work
         # ---
         if highmem:
@@ -460,6 +501,11 @@ def singleJob(
             sf.write('eval "$(conda shell.bash hook)"\n')
         if conda_env != None:
             sf.write("source activate " + conda_env + "\n")
+            sf.write("\n")
+
+        if exports != None:
+            for export in exports:
+                sf.write(f"export {export}\n")
             sf.write("\n")
 
         for pp in pythonpath:

@@ -1,6 +1,5 @@
 import os
 
-
 def jobArrays(
     jobs,
     script_name=None,
