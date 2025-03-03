@@ -91,7 +91,8 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "openmm", "rosetta", 'bioemu']
+    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6",
+                          "bioml", "rosetta", 'bioemu']
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -116,6 +117,25 @@ def jobArrays(
             'GMXBIN="mpirun --bind-to none -report-bindings gmx_mpi"',
         ]
 
+        if cpus_per_task > 1:
+            warning_message = """
+            ----------------------------------------------------------------------------------------------
+            |                                          WARNING                                           |
+            ----------------------------------------------------------------------------------------------
+
+            With cpus_per_task != 1 you might encounter the following
+            GROMACS error:
+
+            | Fatal error:
+            | There is no domain decomposition for {cpus_per_task} ranks that is
+            | compatible with the given box and a minimum cell size of
+            | ___ nm
+            | Change the number of ranks or mdrun option -rcon or -dds or
+            | your LINCS settings. Look in the log file for details on the
+            | domain decomposition
+            """
+            print(warning_message)
+
         # Update mpi and omp options to match cpu and gpus
         gromacs_jobs = []
         for job in jobs:
@@ -131,6 +151,18 @@ def jobArrays(
 
         conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
 
+
+    if program == 'bioml':
+        bioml_modules = ["anaconda", "perl/5.38.2"]
+        module_purge = True
+        if modules == None:
+            modules = bioml_modules
+        else:
+            modules += bioml_modules
+
+        conda_env = "/gpfs/projects/bsc72/conda_envs/bioml"
+
+
     if program == "alphafold":
         if modules == None:
             modules = ["singularity", "alphafold/2.3.2", "cuda"]
@@ -143,6 +175,17 @@ def jobArrays(
         else:
             modules += ["blast"]
 
+    if program == 'pyrosetta':
+        pyrosetta_modules = []
+        if modules == None:
+            modules = pyrosetta_modules
+        else:
+            modules += pyrosetta_modules
+        if mpi:
+            conda_env = "/gpfs/projects/bsc72/conda_envs/mood"
+        else:
+            conda_env = "/gpfs/projects/bsc72/MN4/bsc72/conda_envs/pyrosetta"
+
     if program == "hmmer":
         hmmer_modules = ["anaconda"]
         if modules == None:
@@ -150,6 +193,15 @@ def jobArrays(
         else:
             modules += hmmer_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
+
+    if program == 'Q6':
+        q6_modules = ['oneapi','q6']
+        if modules == None:
+            modules = q6_modules
+        else:
+            modules += q6_modules
+
+        extras = ['source /home/bsc/bsc072181/programs/qtools/bin/qtools/qtools_init.sh']
 
     if program == "asitedesign":
         if modules == None:
