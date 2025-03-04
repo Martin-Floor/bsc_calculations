@@ -3,6 +3,7 @@ import os
 
 def jobArrays(
     jobs,
+    account='bsc72',
     script_name=None,
     job_name=None,
     tasks=1,
@@ -102,7 +103,7 @@ def jobArrays(
             )
 
     if program == "rosetta":
-        rosetta_modules = ["nord3", "intel/2021.4", "impi/2021.4", "mkl/2021.4", "rosetta/3.13"]
+        rosetta_modules = ["rosetta/3.13"]
         if modules == None:
             modules = rosetta_modules
         else:
@@ -236,8 +237,8 @@ def jobArrays(
 
     if isinstance(time, int):
         time = (time, 0)
-    if partition == "debug" and cpus > 64:
-        cpus = 64
+    if partition == "debug" and cpus_per_task > 64:
+        cpus_per_task = 64
         print("Setting cpus at maximum allowed for the debug partition (64)")
 
     if partition == "debug" and time == None:
@@ -262,6 +263,7 @@ def jobArrays(
     # Write jobs as array
     with open(script_name, "w") as sf:
         sf.write("#!/bin/bash\n")
+        sf.write("#SBATCH --account=" + account + "\n")
         sf.write("#SBATCH --job-name=" + job_name + "\n")
         sf.write("#SBATCH --qos=" + partition + "\n")
         sf.write("#SBATCH --time=" + str(time[0]) + ":" + str(time[1]) + ":00\n")
@@ -327,6 +329,7 @@ def singleJob(
     job,
     script_name=None,
     job_name=None,
+    account='bsc72',
     cpus=96,
     mem_per_cpu=None,
     partition=None,
@@ -471,6 +474,7 @@ def singleJob(
     # Write jobs as array
     with open(script_name, "w") as sf:
         sf.write("#!/bin/bash\n")
+        sf.write("#SBATCH --account=" + account + "\n")
         sf.write("#SBATCH --job-name=" + job_name + "\n")
         sf.write("#SBATCH --qos=" + partition + "\n")
         sf.write("#SBATCH --time=" + str(time[0]) + ":" + str(time[1]) + ":00\n")
