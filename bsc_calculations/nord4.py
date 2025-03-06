@@ -103,7 +103,7 @@ def jobArrays(
             )
 
     if program == "rosetta":
-        rosetta_modules = ["rosetta/3.13"]
+        rosetta_modules = ["gcc", "rosetta/3.13"]
         if modules == None:
             modules = rosetta_modules
         else:
