@@ -1,4 +1,5 @@
 import os
+import math
 
 def parallel(jobs, cpus=None, script_name='commands'):
     """
@@ -73,84 +74,123 @@ def parallel(jobs, cpus=None, script_name='commands'):
         sf.write('#!/bin/sh\n')
         sf.write('for script in '+script_name+'_'+'?'*zf+'; do nohup bash $script &> ${script%.*}.nohup& done\n')
 
-def multipleGPUSimulations(jobs, parallel=3, gpus=4, script_name='gpu_commands'):
+def multipleGPUSimulations(
+    jobs,
+    parallel=3,
+    gpus=4,
+    script_name='gpu_commands'
+):
     """
-    Generates scripts to run jobs simultaneously in N GPUs and X cpus (parallel option)
-    in a local computer, i.e. without a job manager. The input jobs must be a list
-    representing each job to execute as a string. Each job string must contain the
-    substring 'GPUID' which will be replaced by an integer representing the GPU
-    to use. When more than one simultaneous jobs are to be executed in the same
-    GPU, the 'parallel' option will distribute the jobs into N cpus more giving
-    a total of 'N*parallel' executions, with a 'parallel' number of jobs being in
-    executed in a single GPU.
+    Generates scripts to run jobs simultaneously on multiple GPUs (and in parallel on each GPU)
+    without using a formal job manager (e.g., in a local environment). The function writes
+    multiple bash scripts:
 
-    Two different scripts are written to execute the jobs in bash language. For
-    example, if the script_name variable is set to commands and the cpus to 4, five
-    scripts will be written:
+    1) A main script (e.g., 'gpu_commands') that calls each of the sub-scripts in the background.
+    2) Sub-scripts (e.g., 'gpu_commands_00', 'gpu_commands_01', etc.) which each contain a
+       subset of jobs.
 
-    - commands
-    - commands_0
-    - commands_1
-    - commands_2
-    - commands_3
-
-    The jobs to execute are distributed into the numbered scripts. Each numbered
-    script contains a sub set of jobs that will be executed in a sequential manner.
-    The numberless script execute all the numbered scripts in the background, using
-    the nohup command, and redirecting the output to different files for each numbered
-    script. To execute the jobs is only necessary to execute:
-
-    'bash commands'
+    Usage:
+    ------
+    1) Prepare a list of commands (strings). Each command should contain the substring 'GPUID'
+       to be replaced by the GPU index.
+    2) Call this function to produce the scripts.
+    3) Run 'bash <script_name>' (e.g., 'bash gpu_commands') to launch everything.
 
     Parameters
     ----------
-    jobs : list
-        List of strings containing the commands to execute jobs.
+    jobs : list of str
+        Each element is a shell command to run. Must contain 'GPUID' if a GPU index is needed.
     gpus : int
-        Number of GPUs to use in the execution.
+        Number of distinct GPUs available.
     parallel : int
-        Number of parallel executions into the same GPU.
+        Number of parallel processes per GPU.
     script_name : str
-        Name of the output scripts to execute the jobs.
+        Base name for the script files written.
+
+    Returns
+    -------
+    None
     """
-    # Write parallel execution scheme #
-    dJobs = int(len(jobs)/(gpus*parallel))
-    rJobs = int(len(jobs)%(gpus*parallel))
-    gpus_count = 0
-    count = 0
+    if not jobs:
+        print("No jobs provided. Exiting without creating scripts.")
+        return
 
-    if len(jobs) <= gpus*parallel:
-        zf = len(str(len(jobs)))
-    else:
-        zf = len(str(gpus*parallel))
+    # Basic validation of the parameters
+    if gpus <= 0 or parallel <= 0:
+        raise ValueError("Both 'gpus' and 'parallel' must be positive integers.")
 
-    for i in range(gpus*parallel):
-        gpuId = gpus_count
-        with open(script_name+'_'+str(i).zfill(zf), 'w') as sf:
-            sf.write('#!/bin/sh\n')
-            for j in range(dJobs):
-                sf.write(jobs[count].replace('GPUID',str(gpuId)))
-                count += 1
-        gpus_count += 1
-        if gpus_count == gpus:
-            gpus_count = 0
+    # Optionally, you could warn if 'GPUID' isn't in any job
+    for idx, job_cmd in enumerate(jobs):
+        if 'GPUID' not in job_cmd:
+            print(f"Warning: 'GPUID' not found in job #{idx}:\n    {job_cmd}")
 
+    # We have gpus * parallel "slots" total
+    total_slots = gpus * parallel
+    total_jobs = len(jobs)
 
-    for i in range(rJobs):
-        gpuId = gpus_count
-        with open(script_name+'_'+str(i).zfill(zf),'a') as sf:
-            sf.write(jobs[count].replace('GPUID',str(gpuId)))
-        count += 1
-        gpus_count += 1
-        if gpus_count == gpus:
-            gpus_count = 0
-        if count == len(jobs):
-            break
+    # Number of jobs that fit evenly across the slots
+    jobs_per_slot = total_jobs // total_slots
+    # Remainder that doesn't split evenly
+    leftover = total_jobs % total_slots
 
-    if dJobs == 0:
-        for i in range(rJobs, gpus*parallel):
-            os.remove(script_name+'_'+str(i).zfill(zf))
+    # Determine zero-fill based on maximum slot index
+    # e.g. if total_slots = 12, zf might be 2 -> 00, 01, 02, ..., 11
+    zf = len(str(total_slots - 1))  # or max(len(str(total_jobs)), len(str(total_slots)))
 
-    with open(script_name,'w') as sf:
-        sf.write('#!/bin/sh\n')
-        sf.write('for script in '+script_name+'_'+'?'*zf+'; do nohup bash $script &> ${script%.*}.nohup& done\n')
+    # Create a structure to hold the jobs for each slot
+    # This clarifies how we distribute jobs across slots/gpus
+    slot_jobs = [[] for _ in range(total_slots)]
+
+    # Fill each slot with the base number of jobs
+    job_index = 0
+    for slot_idx in range(total_slots):
+        for _ in range(jobs_per_slot):
+            slot_jobs[slot_idx].append(jobs[job_index])
+            job_index += 1
+
+    # Distribute leftover jobs, one per slot, until we run out
+    slot_idx = 0
+    while job_index < total_jobs:
+        slot_jobs[slot_idx].append(jobs[job_index])
+        job_index += 1
+        slot_idx += 1
+        if slot_idx >= total_slots:
+            slot_idx = 0
+
+    # Now write the sub-scripts
+    for slot_idx, sub_jobs in enumerate(slot_jobs):
+        if not sub_jobs:
+            # If this slot got no jobs, skip writing the file entirely
+            continue
+
+        gpu_id = slot_idx % gpus  # cycles through 0..gpus-1
+        sub_script_name = f"{script_name}_{str(slot_idx).zfill(zf)}"
+
+        with open(sub_script_name, 'w') as sf:
+            sf.write('#!/bin/sh\n\n')
+            for job_cmd in sub_jobs:
+                # Replace 'GPUID' with the GPU index
+                sf.write(job_cmd.replace('GPUID', str(gpu_id)) + '\n')
+
+    # Finally, write the main script to launch them all
+    with open(script_name, 'w') as sf:
+        sf.write('#!/bin/sh\n\n')
+        sf.write('# This script runs all sub-scripts in the background via nohup.\n')
+        sf.write('# Outputs are redirected to <sub_script_name>.nohup.\n\n')
+
+        # Only launch the scripts that actually have jobs
+        for slot_idx, sub_jobs in enumerate(slot_jobs):
+            if not sub_jobs:
+                continue
+            sub_script_name = f"{script_name}_{str(slot_idx).zfill(zf)}"
+            sf.write(
+                f"nohup bash {sub_script_name} "
+                f">& {sub_script_name}.nohup &\n"
+            )
+
+        # Optionally: add a wait or leave it to run in the background
+        sf.write('\n# Uncomment the line below if you want the script to wait until all finish:\n')
+        sf.write('# wait\n')
+
+    print(f"Generated {script_name} and the corresponding sub-scripts. "
+          f"To run the jobs, execute:\n    bash {script_name}")
