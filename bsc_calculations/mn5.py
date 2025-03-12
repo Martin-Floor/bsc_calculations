@@ -433,6 +433,7 @@ def singleJob(
             )
 
     if program == "pele":
+        module_purge = True
         if modules == None:
             modules = []
         modules += modules + [
@@ -447,11 +448,6 @@ def singleJob(
         ]
         conda_eval_bash = True
         conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
-        if exports == None:
-            exports = []
-        exports += exports + [
-            "PELE_EXEC=/gpfs/projects/bsc72/PELE++/nord4/V1.8/bin/PELE-1.8",
-        ]
 
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
     if job_name == None:
