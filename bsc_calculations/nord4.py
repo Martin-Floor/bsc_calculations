@@ -95,6 +95,7 @@ def jobArrays(
         "alphafold",
         "hmmer",
         "asitedesign",
+        'foldseek'
     ]
     if program != None:
         if program not in available_programs:
@@ -102,14 +103,14 @@ def jobArrays(
                 "Program not found. Available progams: " + " ,".join(available_programs)
             )
 
-    if program == "rosetta":
+    if program == "rosetta": # Updated for N4s
         rosetta_modules = ["gcc", "rosetta/3.13"]
         if modules == None:
             modules = rosetta_modules
         else:
             modules += rosetta_modules
 
-    if program == "pyrosetta":
+    if program == "pyrosetta": # Needs update for N4
         pyrosetta_modules = ["anaconda"]
         if modules == None:
             modules = pyrosetta_modules
@@ -120,7 +121,7 @@ def jobArrays(
         else:
             conda_env = "/gpfs/projects/bsc72/conda_envs/pyrosetta"
 
-    if program == "pml":
+    if program == "pml": # Needs update for N4
         pml_modules = ["anaconda"]
         if modules == None:
             modules = pml_modules
@@ -128,7 +129,7 @@ def jobArrays(
             modules += pml_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/pml"
 
-    if program == "msd":
+    if program == "msd": # Needs update for N4
         msd_modules = [
             "anaconda",
             "intel/2021.4",
@@ -142,7 +143,7 @@ def jobArrays(
             modules += msd_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/msd_"+msd_version
 
-    if program == "netsolp":
+    if program == "netsolp": # Needs update for N4
         netsolp_modules = ["anaconda"]
         if modules == None:
             modules = netsolp_modules
@@ -156,7 +157,7 @@ def jobArrays(
                     "NETSOLP_PATH", "\/gpfs\/projects\/bsc72\/programs\/netsolp-1.0"
                 )
 
-    if program == "blast":
+    if program == "blast": # Needs update for N4
         blast_modules = ["blast"]
         if modules == None:
             modules = blast_modules
@@ -166,12 +167,9 @@ def jobArrays(
     available_partitions = ["debug", "bsc_ls"]
 
     if program == "alphafold":
-        if modules == None:
-            modules = ["singularity", "alphafold"]
-        else:
-            modules += ["singularity", "alphafold"]
+        c
 
-    if program == "hmmer":
+    if program == "hmmer": # Needs update for N4
         hmmer_modules = ["anaconda"]
         if modules == None:
             modules = hmmer_modules
@@ -179,7 +177,7 @@ def jobArrays(
             modules += hmmer_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
 
-    if program == "asitedesign":
+    if program == "asitedesign": # Needs update for N4
         if modules == None:
             modules = [
                 "anaconda",
@@ -197,6 +195,13 @@ def jobArrays(
         pythonpath.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
         pathMN.append("/gpfs/projects/bsc72/MN4/bsc72/masoud/EDesign_V4")
         conda_env = "/gpfs/projects/bsc72/MN4/bsc72/masoud/conda/envs/EDesignTools-MKL"
+
+    if program == 'foldseek': # Updated for N4
+        if modules == None:
+            modules = ['ANACONDA']
+        else:
+            modules += ['ANACONDA']
+        conda_env = "/gpfs/projects/bsc72/conda_envs/foldseek"
 
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
