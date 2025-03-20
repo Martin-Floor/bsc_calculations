@@ -92,7 +92,7 @@ def jobArrays(
 
     #! Programs
     available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6",
-                          "bioml", "rosetta", 'bioemu']
+                          "bioml", "rosetta", 'bioemu','PLACER']
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -228,6 +228,9 @@ def jobArrays(
         if exports == None:
             exports = []
         exports += ['COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu/colabfold']
+    
+    if program == 'PLACER':
+        extras = ["source activate /gpfs/projects/bsc72/conda_envs/PLACER"]
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
@@ -287,6 +290,8 @@ def jobArrays(
         sf.write("#SBATCH --ntasks " + str(ntasks) + "\n")
         if "acc" in partition:
             sf.write("#SBATCH --gres gpu:" + str(gpus) + "\n")
+            cpus = gpus * 20
+            sf.write("#SBATCH --cpus-per-task " + str(cpus) +  "\n")
         sf.write("#SBATCH --account=" + account + "\n")
         if highmem:
             sf.write("#SBATCH --constraint=highmem\n")
@@ -520,6 +525,8 @@ def singleJob(
         sf.write("#SBATCH --account=" + account + "\n")
         if "acc" in partition:
             sf.write("#SBATCH --gres gpu:" + str(gpus) + "\n")
+            cpus = gpus*20
+            sf.write("#SBATCH --cpus-per-task" + str(cpus) + "\n")
         # Have to check if these work
         # ---
         if highmem:
