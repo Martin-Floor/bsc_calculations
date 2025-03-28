@@ -224,10 +224,10 @@ def jobArrays(
             modules = ["anaconda"]
         else:
             modules += ["anaconda"]
-        conda_env = '/gpfs/projects/bsc72/conda_envs/bioemu'
+        conda_env = '/gpfs/projects/bsc72/conda_envs/bioemu2'
         if exports == None:
             exports = []
-        exports += ['COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu/colabfold']
+        exports += ['COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu2/colabfold']
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
