@@ -364,22 +364,20 @@ def singleJob(
         if modules == None:
             modules = []
         modules += modules + [
-            "anaconda",
-            # "intel",
-            # "impi",
-            # "mkl",
-            # "boost",
-            # "cmake",
-            # "transfer",
-            # "bsc",
-        ]
+                'ANACONDA',
+                'intel',
+                'impi',
+                'mkl',
+                'boost/1.64.0-mpi']
         conda_eval_bash = True
-        conda_env = "/gpfs/projects/bsc72/conda_envs/platform/1.6.1_nord4"
+        conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
         if exports == None:
             exports = []
         exports += exports + [
             "PELE_EXEC=/gpfs/projects/bsc72/PELE++/nord4/V1.8/bin/PELE-1.8",
-            "SCHRODINGER=/gpfs/projects/bsc72/MN4/bsc72/SCHRODINGER_ACADEMIC_NORD",
+            "PELE_EXEC=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/bin/PELE_mpi",
+            "export PELE_DATA=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/Data",
+            "export PELE_DOCUMENTS=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/Documents"
         ]
 
     if program == "pyrosetta":
