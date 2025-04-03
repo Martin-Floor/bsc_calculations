@@ -525,8 +525,8 @@ def singleJob(
         sf.write("#SBATCH --account=" + account + "\n")
         if "acc" in partition:
             sf.write("#SBATCH --gres gpu:" + str(gpus) + "\n")
-            cpus = gpus*20
-            sf.write("#SBATCH --cpus-per-task" + str(cpus) + "\n")
+        #     cpus = gpus*20
+        #     sf.write("#SBATCH --cpus-per-task" + str(cpus) + "\n")
         # Have to check if these work
         # ---
         if highmem:
