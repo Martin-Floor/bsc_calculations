@@ -438,7 +438,7 @@ def singleJob(
     if pathMN == None:
         pathMN = []
 
-    available_programs = ["pele"]
+    available_programs = ["pele", "bioml"]
     if program != None:
         if program not in available_programs:
             raise ValueError(
@@ -461,6 +461,16 @@ def singleJob(
         ]
         conda_eval_bash = True
         conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
+    
+    if program == 'bioml':
+        bioml_modules = ["anaconda", "perl/5.38.2"]
+        module_purge = True
+        if modules == None:
+            modules = bioml_modules
+        else:
+            modules += bioml_modules
+        conda_eval_bash = True
+        conda_env = "/gpfs/projects/bsc72/conda_envs/bioml"
 
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
     if job_name == None:
@@ -555,7 +565,8 @@ def singleJob(
             for module in unload_modules:
                 sf.write("module unload " + module + "\n")
             sf.write("\n")
-        if modules != None:
+            
+        if module_purge:
             sf.write("module purge \n")
             for module in modules:
                 sf.write("module load " + module + "\n")
