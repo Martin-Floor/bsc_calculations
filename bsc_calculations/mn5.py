@@ -92,7 +92,7 @@ def jobArrays(
 
     #! Programs
     available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6",
-                          "bioml", "rosetta", 'bioemu','PLACER']
+                          "bioml", "rosetta", 'bioemu','PLACER', 'RFDiffusion']
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -232,6 +232,9 @@ def jobArrays(
     if program == 'PLACER':
         extras = ["source activate /gpfs/projects/bsc72/conda_envs/PLACER"]
 
+    if program == 'RFDiffusion':
+        conda_env = '/gpfs/projects/bsc72/conda_envs/SE3nv'
+
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
 
@@ -343,6 +346,11 @@ def jobArrays(
             sf.write(extra + "\n")
 
     for i in range(len(jobs)):
+
+        if program == 'RFDiffusion':
+            if 'SCRIPT_PATH' in jobs[i]:
+                jobs[i] = jobs[i].replace('SCRIPT_PATH', '/gpfs/projects/bsc72/RFdiffusion/scripts')
+
         with open(script_name, "a") as sf:
             sf.write("if [[ $SLURM_ARRAY_TASK_ID = " + str(i + 1) + " ]]; then\n")
             sf.write(jobs[i])
