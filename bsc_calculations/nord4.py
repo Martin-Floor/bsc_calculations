@@ -374,7 +374,6 @@ def singleJob(
         if exports == None:
             exports = []
         exports += exports + [
-            "PELE_EXEC=/gpfs/projects/bsc72/PELE++/nord4/V1.8/bin/PELE-1.8",
             "PELE_EXEC=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/bin/PELE_mpi",
             "export PELE_DATA=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/Data",
             "export PELE_DOCUMENTS=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/Documents"
