@@ -92,7 +92,7 @@ def jobArrays(
 
     #! Programs
     available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6",
-                          "bioml", "rosetta", 'bioemu','PLACER', 'RFDiffusion']
+                          "bioml", "rosetta", 'bioemu','PLACER', 'RFDiffusion', "boltz2"]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -234,6 +234,15 @@ def jobArrays(
 
     if program == 'RFDiffusion':
         conda_env = '/gpfs/projects/bsc72/conda_envs/SE3nv'
+
+    if program == 'boltz2':
+        if modules == None:
+            modules = ["intel/2023.1"]
+            modules += ["miniforge"]
+        else:
+            modules += ["intel/2023.1"]
+            modules += ["miniforge"]
+        extras = ["source activate /gpfs/scratch/bsc72/ismael/conda_envs/boltz2"]
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
