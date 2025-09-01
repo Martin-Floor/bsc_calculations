@@ -91,8 +91,22 @@ def jobArrays(
         pathMN = []
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6",
-                          "protmlx", "rosetta", 'bioemu','PLACER', 'RFDiffusion', "boltz2"]
+    available_programs = [
+        "gromacs",
+        "alphafold",
+        "hmmer",
+        "asitedesign",
+        "blast",
+        "pyrosetta",
+        "openmm",
+        "Q6",
+        "protmlx",
+        "rosetta",
+        "bioemu",
+        "PLACER",
+        "RFDiffusion",
+        "boltz2",
+    ]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -139,10 +153,10 @@ def jobArrays(
         # Update mpi and omp options to match cpu and gpus
         gromacs_jobs = []
         for job in jobs:
-            gromacs_jobs.append(job.replace('mdrun', f'mdrun -pin on -pinoffset 0'))
+            gromacs_jobs.append(job.replace("mdrun", f"mdrun -pin on -pinoffset 0"))
         jobs = gromacs_jobs
 
-    if program == 'openmm':
+    if program == "openmm":
         openmm_modules = ["anaconda", "cuda/11.8"]
         if modules == None:
             modules = openmm_modules
@@ -151,8 +165,7 @@ def jobArrays(
 
         conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
 
-
-    if program == 'protmlx':
+    if program == "protmlx":
         bioml_modules = ["anaconda", "perl/5.38.2"]
         module_purge = True
         if modules == None:
@@ -162,20 +175,19 @@ def jobArrays(
 
         conda_env = "/gpfs/projects/bsc72/conda_envs/bioml"
 
-
     if program == "alphafold":
         if modules == None:
             modules = ["singularity", "alphafold/2.3.2", "cuda"]
         else:
             modules += ["singularity", "alphafold/2.3.2", "cuda"]
 
-    if program == 'blast':
+    if program == "blast":
         if modules == None:
             modules = ["blast"]
         else:
             modules += ["blast"]
 
-    if program == 'pyrosetta':
+    if program == "pyrosetta":
         pyrosetta_modules = []
         if modules == None:
             modules = pyrosetta_modules
@@ -194,14 +206,16 @@ def jobArrays(
             modules += hmmer_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
 
-    if program == 'Q6':
-        q6_modules = ['oneapi','q6']
+    if program == "Q6":
+        q6_modules = ["oneapi", "q6"]
         if modules == None:
             modules = q6_modules
         else:
             modules += q6_modules
 
-        extras = ['source /home/bsc/bsc072181/programs/qtools/bin/qtools/qtools_init.sh']
+        extras = [
+            "source /home/bsc/bsc072181/programs/qtools/bin/qtools/qtools_init.sh"
+        ]
 
     if program == "asitedesign":
         if modules == None:
@@ -212,30 +226,33 @@ def jobArrays(
         pathMN.append("/gpfs/projects/bsc72/Repos/AsiteDesign")
         conda_env = "/gpfs/projects/bsc72/conda_envs/asite"
 
-    if program == 'rosetta':
-        rosetta_modules = ['gcc/12.3.0', 'rosetta/3.14']
+    if program == "rosetta":
+        rosetta_modules = ["gcc/12.3.0", "rosetta/3.14"]
         if modules == None:
             modules = rosetta_modules
         else:
             modules += rosetta_modules
 
-    if program == 'bioemu':
+    if program == "bioemu":
         if modules == None:
             modules = ["anaconda"]
         else:
             modules += ["anaconda"]
-        conda_env = '/gpfs/projects/bsc72/conda_envs/bioemu2'
+        conda_env = "/gpfs/projects/bsc72/conda_envs/bioemu2"
         if exports == None:
             exports = []
-        exports += ['COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu2/colabfold']
+        exports += [
+            "COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu2/colabfold",
+            "PATH=$PATH:/gpfs/projects/bsc72/Programs/bioemu_colabfold/bin",
+        ]
 
-    if program == 'PLACER':
+    if program == "PLACER":
         extras = ["source activate /gpfs/projects/bsc72/conda_envs/PLACER"]
 
-    if program == 'RFDiffusion':
-        conda_env = '/gpfs/projects/bsc72/conda_envs/SE3nv'
+    if program == "RFDiffusion":
+        conda_env = "/gpfs/projects/bsc72/conda_envs/SE3nv"
 
-    if program == 'boltz2':
+    if program == "boltz2":
         if modules == None:
             modules = ["intel/2023.1"]
             modules += ["miniforge"]
@@ -303,7 +320,7 @@ def jobArrays(
         if "acc" in partition:
             sf.write("#SBATCH --gres gpu:" + str(gpus) + "\n")
             cpus = gpus * 20
-            sf.write("#SBATCH --cpus-per-task " + str(cpus) +  "\n")
+            sf.write("#SBATCH --cpus-per-task " + str(cpus) + "\n")
         sf.write("#SBATCH --account=" + account + "\n")
         if highmem:
             sf.write("#SBATCH --constraint=highmem\n")
@@ -356,9 +373,11 @@ def jobArrays(
 
     for i in range(len(jobs)):
 
-        if program == 'RFDiffusion':
-            if 'SCRIPT_PATH' in jobs[i]:
-                jobs[i] = jobs[i].replace('SCRIPT_PATH', '/gpfs/projects/bsc72/RFdiffusion/scripts')
+        if program == "RFDiffusion":
+            if "SCRIPT_PATH" in jobs[i]:
+                jobs[i] = jobs[i].replace(
+                    "SCRIPT_PATH", "/gpfs/projects/bsc72/RFdiffusion/scripts"
+                )
 
         with open(script_name, "a") as sf:
             sf.write("if [[ $SLURM_ARRAY_TASK_ID = " + str(i + 1) + " ]]; then\n")
@@ -380,8 +399,8 @@ def setUpPELEForMarenostrum(
     general_script="pele_slurm.sh",
     scripts_folder="pele_slurm_scripts",
     print_name=False,
-    partition='gp_bscls',
-    **kwargs
+    partition="gp_bscls",
+    **kwargs,
 ):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
@@ -408,7 +427,7 @@ def setUpPELEForMarenostrum(
                 script_name=scripts_folder + "/" + job_name + ".sh",
                 program="pele",
                 partition=partition,
-                **kwargs
+                **kwargs,
             )
             if print_name:
                 ps.write("echo Launching job " + job_name + "\n")
@@ -470,8 +489,8 @@ def singleJob(
         ]
         conda_eval_bash = True
         conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
-    
-    if program == 'bioml':
+
+    if program == "bioml":
         bioml_modules = ["anaconda", "perl/5.38.2"]
         module_purge = True
         if modules == None:
@@ -574,7 +593,7 @@ def singleJob(
             for module in unload_modules:
                 sf.write("module unload " + module + "\n")
             sf.write("\n")
-            
+
         if module_purge:
             sf.write("module purge \n")
             for module in modules:
