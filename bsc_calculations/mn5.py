@@ -139,8 +139,25 @@ def jobArrays(
         sources = [sources]
 
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6",
-                          "bioml", "rosetta", 'bioemu','PLACER', 'RFDiffusion', 'bioemu_af', 'cp2k', "boltz2"]
+    available_programs = [
+        "gromacs",
+        "alphafold",
+        "alphafold3",
+        "hmmer",
+        "asitedesign",
+        "blast",
+        "pyrosetta",
+        "openmm",
+        "Q6",
+        "bioml",
+        "rosetta",
+        "bioemu",
+        "PLACER",
+        "RFDiffusion",
+        "bioemu_af",
+        "cp2k",
+        "boltz2",
+    ]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -214,6 +231,24 @@ def jobArrays(
             modules = ["singularity", "alphafold/2.3.2", "cuda"]
         else:
             modules += ["singularity", "alphafold/2.3.2", "cuda"]
+
+    if program == "alphafold3":
+        module_purge = True
+        af3_modules = ["singularity", "cuda/12.6", "alphafold/3.0.0"]
+        if modules is None:
+            modules = af3_modules
+        else:
+            modules += af3_modules
+
+        if partition == "gp_bscls":
+            partition = "acc_bscls"
+
+        sbatch_time, time = _normalize_time(partition, (2, 0))
+
+        if exports is None:
+            exports = []
+        if "SRUN_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}" not in exports:
+            exports.append("SRUN_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}")
 
     if program == "blast":
         if modules == None:
