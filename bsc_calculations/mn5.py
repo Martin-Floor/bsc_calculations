@@ -1,6 +1,5 @@
 import os
 
-
 def jobArrays(
     jobs,
     script_name=None,
@@ -247,8 +246,13 @@ def jobArrays(
 
         if exports is None:
             exports = []
-        if "SRUN_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}" not in exports:
-            exports.append("SRUN_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}")
+
+        required_exports = [
+            "WEIGHTS=/gpfs/projects/bsc72/weights/AF3/",
+        ]
+        for export in required_exports:
+            if export not in exports:
+                exports.append(export)
 
     if program == "blast":
         if modules == None:
