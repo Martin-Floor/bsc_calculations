@@ -278,6 +278,7 @@ def jobArrays(
         "hmmer",
         "asitedesign",
         'foldseek',
+        "schrodinger",
         # 'cp2k'
     ]
     if program != None:
@@ -385,6 +386,15 @@ def jobArrays(
         else:
             modules += ['ANACONDA']
         conda_env = "/gpfs/projects/bsc72/conda_envs/foldseek"
+
+    if program == "schrodinger":
+        schrodinger_path = "/gpfs/projects/bsc72/Programs/schrodinger2024-2"
+        if exports is None:
+            exports = []
+        exports += [
+            f"PATH=$PATH:{schrodinger_path}",
+            f"SCHRODINGER={schrodinger_path}",
+        ]
 
     if program == 'cp2k':
         # Use the same stack you built with (GNU + OpenMPI(GCC12.3) + MKL)
