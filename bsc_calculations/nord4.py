@@ -18,6 +18,7 @@ def jobArrays(
     module_purge=False,
     modules=None,
     conda_env=None,
+    conda_activate_bash=None,
     unload_modules=None,
     program=None,
     conda_eval_bash=False,
@@ -95,6 +96,7 @@ def jobArrays(
         "alphafold",
         "hmmer",
         "asitedesign",
+        "openmm"
     ]
     if program != None:
         if program not in available_programs:
@@ -141,6 +143,16 @@ def jobArrays(
         else:
             modules += msd_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/msd_"+msd_version
+    
+    if program == 'openmm':
+        #openmm_modules = ["anaconda", "cuda/11.8"]
+        openmm_modules = ["ANACONDA/5.0.1"]
+        if modules == None:
+            modules = openmm_modules
+        else:
+            modules += openmm_modules
+
+        conda_activate_bash = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
 
     if program == "netsolp":
         netsolp_modules = ["anaconda"]
@@ -234,7 +246,9 @@ def jobArrays(
     if conda_env != None:
         if not isinstance(conda_env, str):
             raise ValueError("The conda environment must be given as a string")
-
+    if conda_activate_bash != None:
+        if not isinstance(conda_activate_bash, str):
+            raise ValueError("The conda environment must be given as a string")
     if isinstance(time, int):
         time = (time, 0)
     if partition == "debug" and cpus_per_task > 64:
@@ -299,6 +313,11 @@ def jobArrays(
             sf.write('eval "$(conda shell.bash hook)"\n')
         if conda_env != None:
             sf.write("source activate " + conda_env + "\n")
+            sf.write("\n")
+        if conda_activate_bash != None:
+            sf.write('eval "$(conda shell.bash hook)"\n')
+            sf.write("\n")
+            sf.write("conda activate " + conda_activate_bash + "\n")
             sf.write("\n")
 
         for pp in pythonpath:
