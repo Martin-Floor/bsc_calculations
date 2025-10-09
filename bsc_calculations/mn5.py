@@ -1,6 +1,5 @@
 import os
 
-
 def jobArrays(
     jobs,
     script_name=None,
@@ -28,8 +27,9 @@ def jobArrays(
     msd_version=None,
     mpi=False,
     pathMN=None,
-    extras=[],
+    extras=None,
     exports=None,
+    sources=None,
 ):
     """
     Set up job array scripts for marenostrum slurm job manager.
@@ -52,6 +52,44 @@ def jobArrays(
         Add local libraries (e.g., prepare_proteins) to PYTHONPATH?
     """
 
+    # --- Normalize and clamp walltime (accepts None | int hours | (hours, minutes))
+    def _normalize_time(partition_name, time_val):
+        """
+        Returns:
+          sbatch_time_str: 'HH:MM:SS'
+          norm_tuple: (hours, minutes)
+        """
+        def as_tuple(tv):
+            if tv is None:
+                return None
+            if isinstance(tv, int):
+                return (tv, 0)
+            if isinstance(tv, (tuple, list)) and len(tv) == 2:
+                h, m = int(tv[0]), int(tv[1])
+                if m >= 60:
+                    h += m // 60
+                    m = m % 60
+                return (max(h, 0), max(m, 0))
+            raise ValueError("time must be None, int (hours), or (hours, minutes)")
+
+        p = (partition_name or "").lower()
+        is_debug = "debug" in p or p in {"gp_debug", "acc_debug"}
+        is_bscls = p.endswith("bscls") or p in {"gp_bscls", "acc_bscls"}
+
+        default = (2, 0) if is_debug else ((48, 0) if is_bscls else (24, 0))
+        cap_minutes = 120 if is_debug else (48 * 60 if is_bscls else None)
+
+        ht = as_tuple(time_val) or default
+        total = ht[0] * 60 + ht[1]
+        if cap_minutes is not None and total > cap_minutes:
+            print(
+                f"Requested time {ht[0]}h{ht[1]:02d} exceeds partition cap; "
+                f"clamping to {cap_minutes//60}h{cap_minutes%60:02d}."
+            )
+            total = cap_minutes
+        hours, minutes = divmod(total, 60)
+        return f"{hours:02d}:{minutes:02d}:00", (hours, minutes)
+
     # Check input
     if isinstance(jobs, str):
         jobs = [jobs]
@@ -65,6 +103,8 @@ def jobArrays(
             raise ValueError(
                 "The given jobs_range must be a tuple or a list of 2-integers"
             )
+
+    sbatch_time, time = _normalize_time(partition, time)
 
     # Group jobs to enter in the same job array (useful for launching many short
     # jobs when there are a max_job_allowed limit per user.)
@@ -90,9 +130,33 @@ def jobArrays(
     if pathMN == None:
         pathMN = []
 
+    # Normalize new/changed params
+    if extras is None:
+        extras = []
+
+    if sources is not None and isinstance(sources, str):
+        sources = [sources]
+
     #! Programs
-    available_programs = ["gromacs", "alphafold", "hmmer", "asitedesign", "blast", "pyrosetta", "openmm","Q6",
-                          "bioml", "rosetta", 'bioemu']
+    available_programs = [
+        "gromacs",
+        "alphafold",
+        "alphafold3",
+        "hmmer",
+        "asitedesign",
+        "blast",
+        "pyrosetta",
+        "openmm",
+        "Q6",
+        "bioml",
+        "rosetta",
+        "bioemu",
+        "PLACER",
+        "RFDiffusion",
+        "bioemu_af",
+        "cp2k",
+        "boltz2",
+    ]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
     #                      'msd', 'pml', 'netsolp', 'alphafold', 'asitedesign']
@@ -139,10 +203,10 @@ def jobArrays(
         # Update mpi and omp options to match cpu and gpus
         gromacs_jobs = []
         for job in jobs:
-            gromacs_jobs.append(job.replace('mdrun', f'mdrun -pin on -pinoffset 0'))
+            gromacs_jobs.append(job.replace("mdrun", f"mdrun -pin on -pinoffset 0"))
         jobs = gromacs_jobs
 
-    if program == 'openmm':
+    if program == "openmm":
         openmm_modules = ["anaconda", "cuda/11.8"]
         if modules == None:
             modules = openmm_modules
@@ -151,8 +215,7 @@ def jobArrays(
 
         conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
 
-
-    if program == 'bioml':
+    if program == "protmlx":
         bioml_modules = ["anaconda", "perl/5.38.2"]
         module_purge = True
         if modules == None:
@@ -162,20 +225,42 @@ def jobArrays(
 
         conda_env = "/gpfs/projects/bsc72/conda_envs/bioml"
 
-
     if program == "alphafold":
         if modules == None:
             modules = ["singularity", "alphafold/2.3.2", "cuda"]
         else:
             modules += ["singularity", "alphafold/2.3.2", "cuda"]
 
-    if program == 'blast':
+    if program == "alphafold3":
+        module_purge = True
+        af3_modules = ["singularity", "cuda/12.6", "alphafold/3.0.0"]
+        if modules is None:
+            modules = af3_modules
+        else:
+            modules += af3_modules
+
+        if partition == "gp_bscls":
+            partition = "acc_bscls"
+
+        sbatch_time, time = _normalize_time(partition, (2, 0))
+
+        if exports is None:
+            exports = []
+
+        required_exports = [
+            "WEIGHTS=/gpfs/projects/bsc72/weights/AF3/",
+        ]
+        for export in required_exports:
+            if export not in exports:
+                exports.append(export)
+
+    if program == "blast":
         if modules == None:
             modules = ["blast"]
         else:
             modules += ["blast"]
 
-    if program == 'pyrosetta':
+    if program == "pyrosetta":
         pyrosetta_modules = []
         if modules == None:
             modules = pyrosetta_modules
@@ -194,14 +279,16 @@ def jobArrays(
             modules += hmmer_modules
         conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
 
-    if program == 'Q6':
-        q6_modules = ['oneapi','q6']
+    if program == "Q6":
+        q6_modules = ["oneapi", "q6"]
         if modules == None:
             modules = q6_modules
         else:
             modules += q6_modules
 
-        extras = ['source /home/bsc/bsc072181/programs/qtools/bin/qtools/qtools_init.sh']
+        extras = [
+            "source /home/bsc/bsc072181/programs/qtools/bin/qtools/qtools_init.sh"
+        ]
 
     if program == "asitedesign":
         if modules == None:
@@ -212,22 +299,80 @@ def jobArrays(
         pathMN.append("/gpfs/projects/bsc72/Repos/AsiteDesign")
         conda_env = "/gpfs/projects/bsc72/conda_envs/asite"
 
-    if program == 'rosetta':
-        rosetta_modules = ['gcc/12.3.0', 'rosetta/3.14']
+    if program == "rosetta":
+        rosetta_modules = ["gcc/12.3.0", "rosetta/3.14"]
         if modules == None:
             modules = rosetta_modules
         else:
             modules += rosetta_modules
 
-    if program == 'bioemu':
+    if program == "bioemu":
         if modules == None:
             modules = ["anaconda"]
         else:
             modules += ["anaconda"]
-        conda_env = '/gpfs/projects/bsc72/conda_envs/bioemu'
+        conda_env = "/gpfs/projects/bsc72/conda_envs/bioemu2"
         if exports == None:
             exports = []
-        exports += ['COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu/colabfold']
+        exports += [
+            "COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu2/colabfold",
+            "PATH=$PATH:/gpfs/projects/bsc72/Programs/bioemu_colabfold/bin",
+        ]
+
+    if program == 'bioemu_af':
+        if modules == None:
+            modules = ["anaconda"]+["singularity", "alphafold/2.3.2", "cuda"]
+        else:
+            modules += ["anaconda"]+["singularity", "alphafold/2.3.2", "cuda"]
+        conda_env = '/gpfs/projects/bsc72/conda_envs/bioemu2'
+        if exports == None:
+            exports = []
+        exports += ['COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu2/colabfold']
+
+    if program == 'PLACER':
+        extras = ["source activate /gpfs/projects/bsc72/conda_envs/PLACER"]
+
+    if program == 'RFDiffusion':
+        if modules == None:
+            modules = ["anaconda/2024.02"]
+        else:
+            modules += ["anaconda/2024.02"]
+        conda_env = 'RFDiffusion'
+
+    if program == 'cp2k':
+        # Use the same stack you built with (GNU + OpenMPI(GCC12.3) + MKL)
+        module_purge = True
+        specific_modules = ['gcc/12.3.0', 'openmpi/4.1.5-gcc12.3', 'mkl/2023.2.0']
+        if modules is None:
+            modules = specific_modules
+        else:
+            modules += specific_modules
+        # Do NOT set conda_env here. We must source the toolchain setup file, not "activate" it.
+        toolchain_setup = '/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup'
+        if exports is None:
+            exports = []
+
+        exports += [
+            'OMP_NUM_THREADS=1',
+            'MKL_NUM_THREADS=1',
+            'MKL_DYNAMIC=FALSE',
+            'MKL_DISABLE_FAST_MM=${MKL_DISABLE_FAST_MM:-1}',
+            'CP2K_BLAS_AUTO_THREADS=${CP2K_BLAS_AUTO_THREADS:-0}'
+        ]
+
+        if sources is None:
+            sources = []
+        sources.append('/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup')
+        pathMN.append("/gpfs/projects/bsc72/Programs/cp2k-2025.2.clean/exe/local")
+
+    if program == "boltz2":
+        if modules == None:
+            modules = ["intel/2023.1"]
+            modules += ["miniforge"]
+        else:
+            modules += ["intel/2023.1"]
+            modules += ["miniforge"]
+        extras = ["source activate /gpfs/scratch/bsc72/ismael/conda_envs/boltz2"]
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
@@ -265,14 +410,9 @@ def jobArrays(
         if not isinstance(conda_env, str):
             raise ValueError("The conda environment must be given as a string")
 
-    if "debug" in partition:
-        time = 2
-    else:
-        if time > 48:
-            print(
-                "Setting time at maximum allowed for the bsc_ls partition (48 hours)."
-            )
-            time = 48
+    if sources is not None:
+        if not isinstance(sources, list) or not all(isinstance(s, str) for s in sources):
+            raise ValueError("sources must be a list of strings or a single string")
 
     # Slice jobs if a range is given
     if jobs_range != None:
@@ -283,10 +423,12 @@ def jobArrays(
         sf.write("#!/bin/bash\n")
         sf.write("#SBATCH --job-name=" + job_name + "\n")
         sf.write("#SBATCH --qos=" + partition + "\n")
-        sf.write("#SBATCH --time=" + str(time) + ":00:00\n")
+        sf.write("#SBATCH --time=" + sbatch_time + "\n")
         sf.write("#SBATCH --ntasks " + str(ntasks) + "\n")
         if "acc" in partition:
             sf.write("#SBATCH --gres gpu:" + str(gpus) + "\n")
+            cpus = gpus * 20
+            sf.write("#SBATCH --cpus-per-task " + str(cpus) + "\n")
         sf.write("#SBATCH --account=" + account + "\n")
         if highmem:
             sf.write("#SBATCH --constraint=highmem\n")
@@ -311,6 +453,10 @@ def jobArrays(
         if modules != None:
             for module in modules:
                 sf.write("module load " + module + "\n")
+            sf.write("\n")
+        if sources != None:
+            for s in sources:
+                sf.write("source " + s + "\n")
             sf.write("\n")
         if conda_eval_bash:
             sf.write('eval "$(conda shell.bash hook)"\n')
@@ -338,6 +484,13 @@ def jobArrays(
             sf.write(extra + "\n")
 
     for i in range(len(jobs)):
+
+        if program == "RFDiffusion":
+            if "SCRIPT_PATH" in jobs[i]:
+                jobs[i] = jobs[i].replace(
+                    "SCRIPT_PATH", "/gpfs/projects/bsc72/RFdiffusion/scripts"
+                )
+
         with open(script_name, "a") as sf:
             sf.write("if [[ $SLURM_ARRAY_TASK_ID = " + str(i + 1) + " ]]; then\n")
             sf.write(jobs[i])
@@ -358,8 +511,8 @@ def setUpPELEForMarenostrum(
     general_script="pele_slurm.sh",
     scripts_folder="pele_slurm_scripts",
     print_name=False,
-    partition='gp_bscls',
-    **kwargs
+    partition="gp_bscls",
+    **kwargs,
 ):
     """
     Creates submission scripts for Marenostrum for each PELE job inside the jobs variable.
@@ -386,7 +539,7 @@ def setUpPELEForMarenostrum(
                 script_name=scripts_folder + "/" + job_name + ".sh",
                 program="pele",
                 partition=partition,
-                **kwargs
+                **kwargs,
             )
             if print_name:
                 ps.write("echo Launching job " + job_name + "\n")
@@ -425,7 +578,7 @@ def singleJob(
     if pathMN == None:
         pathMN = []
 
-    available_programs = ["pele"]
+    available_programs = ["pele", "bioml"]
     if program != None:
         if program not in available_programs:
             raise ValueError(
@@ -433,6 +586,7 @@ def singleJob(
             )
 
     if program == "pele":
+        module_purge = True
         if modules == None:
             modules = []
         modules += modules + [
@@ -447,11 +601,16 @@ def singleJob(
         ]
         conda_eval_bash = True
         conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
-        if exports == None:
-            exports = []
-        exports += exports + [
-            "PELE_EXEC=/gpfs/projects/bsc72/PELE++/nord4/V1.8/bin/PELE-1.8",
-        ]
+
+    if program == 'bioml':
+        bioml_modules = ["anaconda", "perl/5.38.2"]
+        module_purge = True
+        if modules == None:
+            modules = bioml_modules
+        else:
+            modules += bioml_modules
+        conda_eval_bash = True
+        conda_env = "/gpfs/projects/bsc72/conda_envs/bioml"
 
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
     if job_name == None:
@@ -524,6 +683,8 @@ def singleJob(
         sf.write("#SBATCH --account=" + account + "\n")
         if "acc" in partition:
             sf.write("#SBATCH --gres gpu:" + str(gpus) + "\n")
+        #     cpus = gpus*20
+        #     sf.write("#SBATCH --cpus-per-task" + str(cpus) + "\n")
         # Have to check if these work
         # ---
         if highmem:
@@ -544,7 +705,8 @@ def singleJob(
             for module in unload_modules:
                 sf.write("module unload " + module + "\n")
             sf.write("\n")
-        if modules != None:
+
+        if module_purge:
             sf.write("module purge \n")
             for module in modules:
                 sf.write("module load " + module + "\n")

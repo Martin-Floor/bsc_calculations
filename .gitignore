@@ -130,3 +130,6 @@ dmypy.json
 .idea/*
 
 test
+
+# VS Code
+settings.json
