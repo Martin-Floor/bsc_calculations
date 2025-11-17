@@ -156,6 +156,7 @@ def jobArrays(
         "bioemu_af",
         "cp2k",
         "boltz2",
+        "ligandmpnn",
     ]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
@@ -270,6 +271,9 @@ def jobArrays(
             conda_env = "/gpfs/projects/bsc72/conda_envs/mood"
         else:
             conda_env = "/gpfs/projects/bsc72/MN4/bsc72/conda_envs/pyrosetta"
+
+    if program == "ligandmpnn":
+        conda_env = "/gpfs/projects/bsc72/conda_envs/ligandmpnn"
 
     if program == "hmmer":
         hmmer_modules = ["anaconda"]
