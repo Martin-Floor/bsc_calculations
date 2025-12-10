@@ -1,5 +1,6 @@
 import os
 
+
 def jobArrays(
     jobs,
     script_name=None,
@@ -59,6 +60,7 @@ def jobArrays(
           sbatch_time_str: 'HH:MM:SS'
           norm_tuple: (hours, minutes)
         """
+
         def as_tuple(tv):
             if tv is None:
                 return None
@@ -319,50 +321,54 @@ def jobArrays(
             "PATH=$PATH:/gpfs/projects/bsc72/Programs/bioemu_colabfold/bin",
         ]
 
-    if program == 'bioemu_af':
+    if program == "bioemu_af":
         if modules == None:
-            modules = ["anaconda"]+["singularity", "alphafold/2.3.2", "cuda"]
+            modules = ["anaconda"] + ["singularity", "alphafold/2.3.2", "cuda"]
         else:
-            modules += ["anaconda"]+["singularity", "alphafold/2.3.2", "cuda"]
-        conda_env = '/gpfs/projects/bsc72/conda_envs/bioemu2'
+            modules += ["anaconda"] + ["singularity", "alphafold/2.3.2", "cuda"]
+        conda_env = "/gpfs/projects/bsc72/conda_envs/bioemu2"
         if exports == None:
             exports = []
-        exports += ['COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu2/colabfold']
+        exports += ["COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu2/colabfold"]
 
-    if program == 'PLACER':
+    if program == "PLACER":
         extras = ["source activate /gpfs/projects/bsc72/conda_envs/PLACER"]
 
-    if program == 'RFDiffusion':
+    if program == "RFDiffusion":
         if modules == None:
             modules = ["anaconda/2024.02"]
         else:
             modules += ["anaconda/2024.02"]
-        conda_env = 'RFDiffusion'
+        conda_env = "RFDiffusion"
 
-    if program == 'cp2k':
+    if program == "cp2k":
         # Use the same stack you built with (GNU + OpenMPI(GCC12.3) + MKL)
         module_purge = True
-        specific_modules = ['gcc/12.3.0', 'openmpi/4.1.5-gcc12.3', 'mkl/2023.2.0']
+        specific_modules = ["gcc/12.3.0", "openmpi/4.1.5-gcc12.3", "mkl/2023.2.0"]
         if modules is None:
             modules = specific_modules
         else:
             modules += specific_modules
         # Do NOT set conda_env here. We must source the toolchain setup file, not "activate" it.
-        toolchain_setup = '/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup'
+        toolchain_setup = (
+            "/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup"
+        )
         if exports is None:
             exports = []
 
         exports += [
-            'OMP_NUM_THREADS=1',
-            'MKL_NUM_THREADS=1',
-            'MKL_DYNAMIC=FALSE',
-            'MKL_DISABLE_FAST_MM=${MKL_DISABLE_FAST_MM:-1}',
-            'CP2K_BLAS_AUTO_THREADS=${CP2K_BLAS_AUTO_THREADS:-0}'
+            "OMP_NUM_THREADS=1",
+            "MKL_NUM_THREADS=1",
+            "MKL_DYNAMIC=FALSE",
+            "MKL_DISABLE_FAST_MM=${MKL_DISABLE_FAST_MM:-1}",
+            "CP2K_BLAS_AUTO_THREADS=${CP2K_BLAS_AUTO_THREADS:-0}",
         ]
 
         if sources is None:
             sources = []
-        sources.append('/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup')
+        sources.append(
+            "/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup"
+        )
         pathMN.append("/gpfs/projects/bsc72/Programs/cp2k-2025.2.clean/exe/local")
 
     if program == "boltz2":
@@ -411,7 +417,9 @@ def jobArrays(
             raise ValueError("The conda environment must be given as a string")
 
     if sources is not None:
-        if not isinstance(sources, list) or not all(isinstance(s, str) for s in sources):
+        if not isinstance(sources, list) or not all(
+            isinstance(s, str) for s in sources
+        ):
             raise ValueError("sources must be a list of strings or a single string")
 
     # Slice jobs if a range is given
@@ -602,7 +610,7 @@ def singleJob(
         conda_eval_bash = True
         conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
 
-    if program == 'bioml':
+    if program == "bioml":
         bioml_modules = ["anaconda", "perl/5.38.2"]
         module_purge = True
         if modules == None:
