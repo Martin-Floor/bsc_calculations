@@ -388,7 +388,9 @@ def jobArrays(
             modules = abfe_modules
         else:
             modules += abfe_modules
-        extras = ["source activate /gpfs/apps/MN5/ACC/MINIFORGE/24.3.0-0/envs/atm8.4.0"]
+        extras = [
+            "source activate /gpfs/apps/MN5/ACC/MINIFORGE/24.3.0-0/envs/atm8.4.0\n"
+        ]
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
