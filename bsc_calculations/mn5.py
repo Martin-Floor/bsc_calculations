@@ -382,7 +382,7 @@ def jobArrays(
         extras = ["source activate /gpfs/scratch/bsc72/ismael/conda_envs/boltz2"]
 
     if program == "abfeopenmm":
-        abfe_modules = ["miniforge"]
+        abfe_modules = ["miniforge", "cuda/12.2"]
         module_purge = True
         if modules is None:
             modules = abfe_modules
