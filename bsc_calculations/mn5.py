@@ -147,6 +147,7 @@ def jobArrays(
         "blast",
         "pyrosetta",
         "openmm",
+        "gamd",
         "Q6",
         "bioml",
         "rosetta",
@@ -216,6 +217,16 @@ def jobArrays(
             modules += openmm_modules
 
         conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
+
+    if program == "gamd":
+        gamd_modules = ["anaconda", "cuda/11.8"]
+        if modules == None:
+            modules = gamd_modules
+        else:
+            modules += gamd_modules
+
+        conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
+        pathMN.append("/gpfs/projects/bsc72/Programs/gamd-openmm")
 
     if program == "protmlx":
         bioml_modules = ["anaconda", "perl/5.38.2"]
