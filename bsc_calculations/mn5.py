@@ -8,7 +8,7 @@ def jobArrays(
     gpus=1,
     mem_per_cpu=None,
     highmem=False,
-    partition="gp_bscls",
+    partition=None,
     cpus_per_task=None,
     output=None,
     mail=None,
@@ -103,6 +103,12 @@ def jobArrays(
             raise ValueError(
                 "The given jobs_range must be a tuple or a list of 2-integers"
             )
+
+    if partition is None:
+        raise ValueError(
+            "You must select a partition. Available partitions are: "
+            "acc_debug, acc_bscls, gp_debug, gp_bscls"
+        )
 
     sbatch_time, time = _normalize_time(partition, time)
 
