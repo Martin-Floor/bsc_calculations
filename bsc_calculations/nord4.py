@@ -118,7 +118,7 @@ def jobArrays(
         Modules to `module unload` before loading new ones.
 
     program : {None, "rosetta","pyrosetta","pml","netsolp","blast","msd",
-               "alphafold","hmmer","asitedesign","foldseek","cp2k"}, default=None
+               "alphafold","hmmer","asitedesign","foldseek","cp2k","orca"}, default=None
         Convenience presets that append recommended modules/paths/envs.
         Examples:
         - `"cp2k"`: loads `ANACONDA`, sets `conda_env` to
@@ -281,6 +281,8 @@ def jobArrays(
         "openmm"
         'foldseek',
         "schrodinger",
+        "cp2k",
+        "orca",
     ]
     if program != None:
         if program not in available_programs:
@@ -430,6 +432,29 @@ def jobArrays(
             sources = []
         sources.append('/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup')
         pathMN.append("/gpfs/projects/bsc72/Programs/cp2k-2025.2.clean/exe/local")
+
+    if program == "orca":
+        # ORCA 5.0.3 prereqs openmpi/4.1.1, which itself prereqs intel/2021.4.
+        # The default login modules (intel/2017 + impi) conflict with openmpi,
+        # so we purge first and reload a clean stack.
+        module_purge = True
+        orca_modules = ['intel/2021.4', 'openmpi/4.1.1', 'orca/5.0.3']
+        if modules is None:
+            modules = orca_modules
+        else:
+            modules += orca_modules
+        # The orca/5.0.3 module on nord4 only prepends /apps/ORCA/5.0.3/ to
+        # PATH, but the actual binaries (orca, orca_mm, ...) live in
+        # /apps/ORCA/5.0.3/OPENMPI/. Add that directory directly so orca_mm,
+        # orca_2mkl, etc. resolve.
+        pathMN.append('/apps/ORCA/5.0.3/OPENMPI')
+        # ORCA refuses parallel runs unless the binary is invoked via its
+        # absolute path (mpirun-spawned workers need to know where to find
+        # orca). Export ORCA_BIN so users write `${ORCA_BIN} input.inp` in
+        # their job commands.
+        if exports is None:
+            exports = []
+        exports.append('ORCA_BIN=/apps/ORCA/5.0.3/OPENMPI/orca')
 
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
