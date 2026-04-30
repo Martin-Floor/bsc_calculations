@@ -165,6 +165,7 @@ def jobArrays(
         "boltz2",
         "ligandmpnn",
         "mlcg",
+        "bindcraft",
     ]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
@@ -280,7 +281,7 @@ def jobArrays(
             modules += ["blast"]
 
     if program == "pyrosetta":
-        pyrosetta_modules = []
+        pyrosetta_modules = ["anaconda"]
         if modules == None:
             modules = pyrosetta_modules
         else:
@@ -288,7 +289,7 @@ def jobArrays(
         if mpi:
             conda_env = "/gpfs/projects/bsc72/conda_envs/mood"
         else:
-            conda_env = "/gpfs/projects/bsc72/MN4/bsc72/conda_envs/pyrosetta"
+            conda_env = "/gpfs/projects/bsc72/conda_envs/pyrosetta"
 
     if program == "ligandmpnn":
         conda_env = "/gpfs/projects/bsc72/conda_envs/ligandmpnn"
@@ -398,6 +399,23 @@ def jobArrays(
             modules += ["intel/2023.1"]
             modules += ["miniforge"]
         extras = ["source activate /gpfs/scratch/bsc72/ismael/conda_envs/boltz2"]
+
+    if program == "bindcraft":
+        bc_modules = ["miniforge"]
+        if modules == None:
+            modules = bc_modules
+        else:
+            modules += bc_modules
+        extras = [
+            "source activate /apps/ACC/MINIFORGE/24.3.0-0/envs/BindCraft1.5.1",
+        ]
+        if exports is None:
+            exports = []
+        exports += [
+            "LD_LIBRARY_PATH=/apps/ACC/MINIFORGE/24.3.0-0/lib:$LD_LIBRARY_PATH",
+        ]
+        if partition == "gp_bscls":
+            partition = "acc_bscls"
 
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
