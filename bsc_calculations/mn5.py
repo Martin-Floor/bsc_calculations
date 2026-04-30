@@ -118,7 +118,7 @@ def jobArrays(
         grouped_jobs = []
         gj = ""
         for i, j in enumerate(jobs):
-            gj += j
+            gj += j.rstrip("\n") + "\n"
             if (i + 1) % group_jobs_by == 0:
                 grouped_jobs.append(gj)
                 gj = ""
