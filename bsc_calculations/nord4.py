@@ -250,12 +250,14 @@ def jobArrays(
         grouped_jobs = []
         gj = ""
         for i, j in enumerate(jobs):
-            gj += j
+            # Newline separator prevents adjacent commands from being glued
+            # onto the same shell line (e.g. `cmd1 -WAIT"cmd2 ..."`).
+            gj += j + "\n"
             if (i + 1) % group_jobs_by == 0:
-                grouped_jobs.append(gj)
+                grouped_jobs.append(gj.rstrip("\n"))
                 gj = ""
         if gj != "":
-            grouped_jobs.append(gj)
+            grouped_jobs.append(gj.rstrip("\n"))
         jobs = grouped_jobs
 
     elif not isinstance(group_jobs_by, type(None)):
@@ -407,6 +409,9 @@ def jobArrays(
         exports += [
             f"PATH=$PATH:{schrodinger_path}",
             f"SCHRODINGER={schrodinger_path}",
+            # Keep user-site packages out of Schrödinger's embedded Python to
+            # avoid shadowing bundled Biopython / other deps.
+            "PYTHONNOUSERSITE=1",
         ]
 
     if program == 'cp2k':
