@@ -12,7 +12,7 @@ def jobArrays(
     cpus_per_task=None,
     output=None,
     mail=None,
-    time=48,
+    time=None,
     module_purge=False,
     modules=None,
     conda_env=None,
@@ -110,6 +110,11 @@ def jobArrays(
             "acc_debug, acc_bscls, gp_debug, gp_bscls"
         )
 
+    # Capture whether the caller passed an explicit walltime *before* the
+    # generic normalisation rewrites None into the partition default.
+    # Program-specific blocks (e.g. alphafold3) consult this so they can
+    # apply their own default only when the user has not opted in.
+    _user_supplied_time = time is not None
     sbatch_time, time = _normalize_time(partition, time)
 
     # Group jobs to enter in the same job array (useful for launching many short
@@ -262,7 +267,13 @@ def jobArrays(
         if partition == "gp_bscls":
             partition = "acc_bscls"
 
-        sbatch_time, time = _normalize_time(partition, (2, 0))
+        # AF3 default walltime is 2h (most jobs finish in ~30–40 min on H100).
+        # Honour an explicit ``time=`` from the caller — earlier this branch
+        # unconditionally clamped to 2h and silently dropped longer requests,
+        # which timed out long-MSA jobs even though acc_bscls allows up to 48h.
+        if not _user_supplied_time:
+            time = (2, 0)
+        sbatch_time, time = _normalize_time(partition, time)
 
         if exports is None:
             exports = []
