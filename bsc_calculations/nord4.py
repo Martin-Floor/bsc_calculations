@@ -636,21 +636,32 @@ def singleJob(
         purge = True
         if modules == None:
             modules = []
-        modules += modules + [
+        # The previous `modules += modules + [...]` was a typo that duplicated
+        # any caller-supplied modules. `.extend(...)` does what was intended.
+        modules.extend([
                 'ANACONDA',
                 'intel',
                 'impi',
                 'mkl',
-                'boost/1.64.0-mpi']
+                'boost/1.64.0-mpi'])
         conda_eval_bash = True
         conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
         if exports == None:
             exports = []
-        exports += exports + [
-            "PELE_EXEC=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/bin/PELE_mpi",
-            "export PELE_DATA=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/Data",
-            "export PELE_DOCUMENTS=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/Documents"
-        ]
+        # Same `exports += exports + [...]` typo. Also: the PELE++ path
+        # `/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/` is the legacy MN4
+        # location and no longer exists on Nord4. Repointed at the current
+        # Nord4-native PELE 1.8.1 install under
+        # `/gpfs/projects/bsc72/PELE++/nord4/`. The 2nd / 3rd entries
+        # previously embedded their own `export ` prefix; the sbatch
+        # writer at ~L799 already prefixes `export `, so the old entries
+        # rendered as `export export PELE_DATA=...`. Strip the prefix here.
+        # Caught 2026-05-20 while wiring up cdk2_design_pele on Nord4.
+        exports.extend([
+            "PELE_EXEC=/gpfs/projects/bsc72/PELE++/nord4/V1.8.1/PELE-1.8.1_mpi/PELE-1.8.1",
+            "PELE_DATA=/gpfs/projects/bsc72/PELE++/nord4/V1.8.1/PELE-1.8.1_mpi/Data",
+            "PELE_DOCUMENTS=/gpfs/projects/bsc72/PELE++/nord4/V1.8.1/PELE-1.8.1_mpi/Documents",
+        ])
 
     if program == "pyrosetta":
         pyrosetta_modules = ["anaconda"]
