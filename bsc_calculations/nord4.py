@@ -638,11 +638,16 @@ def singleJob(
             modules = []
         # The previous `modules += modules + [...]` was a typo that duplicated
         # any caller-supplied modules. `.extend(...)` does what was intended.
+        # `mkl/2022.3` is pinned: the Nord4-native PELE 1.8.1 binary needs
+        # MKL .so.2 SOnames (libmkl_intel_lp64.so.2 etc.), and the default
+        # `mkl` module on Nord4 (2017.4) only ships .so without the .2
+        # suffix. mkl/2022.3 is the first Nord4 module providing the
+        # required SOnames; the binary launches cleanly under it.
         modules.extend([
                 'ANACONDA',
                 'intel',
                 'impi',
-                'mkl',
+                'mkl/2022.3',
                 'boost/1.64.0-mpi'])
         conda_eval_bash = True
         conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
