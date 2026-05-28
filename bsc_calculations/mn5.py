@@ -171,6 +171,11 @@ def jobArrays(
         "ligandmpnn",
         "mlcg",
         "bindcraft",
+        "chai1",
+        "protenix",
+        "rfaa",
+        "esmfold",
+        "esmfold2",
     ]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
@@ -428,6 +433,103 @@ def jobArrays(
         if partition == "gp_bscls":
             partition = "acc_bscls"
 
+    if program == "chai1":
+        # Chai-1 (open-weights AF3-like cofolder, structure-only).
+        # Env installed by mfloor; weights at /gpfs/projects/bsc72/weights/chai_v061.
+        if modules == None:
+            modules = ["miniforge"]
+        else:
+            modules += ["miniforge"]
+        extras = [
+            "source activate /gpfs/projects/bsc72/conda_envs/chai_v061",
+            "export CHAI_DOWNLOADS_DIR=/gpfs/projects/bsc72/weights/chai_v061",
+            "export DISABLE_PANDERA_IMPORT_WARNING=True",
+        ]
+        if partition == "gp_bscls":
+            partition = "acc_bscls"
+
+    if program == "protenix":
+        # Protenix (ByteDance open AF3 reproduction). Env installed by annadiaz.
+        # Source repo at /gpfs/scratch/bsc72/annadiaz/programs/Protenix; CCD/checkpoints
+        # under release_data/ccd_cache (set via PROTENIX_DATA_ROOT_DIR).
+        if modules == None:
+            modules = ["miniforge"]
+        else:
+            modules += ["miniforge"]
+        extras = [
+            "source activate /gpfs/projects/bsc72/conda_envs/protenix",
+            "export PROTENIX_DATA_ROOT_DIR=/gpfs/projects/bsc72/conda_envs/protenix/lib/python3.10/site-packages/release_data/ccd_cache",
+        ]
+        if partition == "gp_bscls":
+            partition = "acc_bscls"
+
+    if program == "rfaa":
+        # RoseTTAFold-All-Atom (Baker Lab, 3-track + diffusion). Pip-overlay venv
+        # built atop boltz-2.1.1 + torch 2.0.1+cu118 + dgl 1.1.3+cu118. Pipeline:
+        #   precomputed a3m (e.g. from AF3) -> hhsearch vs pdb100 -> rf2aa.run_inference
+        # cuda/11.8 module is REQUIRED because dgl 1.1.3+cu118 links against
+        # libcusparse.so.11 et al. which the boltz parent env (cu12) does not ship.
+        # Paths (shared bsc72 locations):
+        #   repo:     /gpfs/projects/bsc72/Programs/RoseTTAFold-All-Atom
+        #   weights:  /gpfs/projects/bsc72/weights/rfaa/RFAA_paper_weights.pt
+        #   pdb100:   /gpfs/projects/bsc72/databases/pdb100_2021Mar03
+        #   hhsuite:  /gpfs/projects/bsc72/Programs/hhsuite-3.3.0/bin
+        #   venv:     /gpfs/scratch/bsc72/bsc072523/envs/rfaa_pip2 (pip overlay)
+        if modules == None:
+            modules = ["cuda/11.8"]
+        else:
+            modules += ["cuda/11.8"]
+        extras = [
+            "source /gpfs/scratch/bsc72/bsc072523/envs/rfaa_pip2/bin/activate",
+            "export PYTHONPATH=/gpfs/projects/bsc72/Programs/RoseTTAFold-All-Atom:$PYTHONPATH",
+            "export PATH=/gpfs/projects/bsc72/Programs/hhsuite-3.3.0/bin:$PATH",
+            "export HHLIB=/gpfs/projects/bsc72/Programs/hhsuite-3.3.0",
+            "export RFAA_PDB100_DIR=/gpfs/projects/bsc72/databases/pdb100_2021Mar03",
+            "export RFAA_WEIGHTS=/gpfs/projects/bsc72/weights/rfaa/RFAA_paper_weights.pt",
+        ]
+        if partition == "gp_bscls":
+            partition = "acc_bscls"
+
+    if program == "esmfold":
+        # ESMFold (HuggingFace EsmForProteinFolding). Single-sequence folder; uses
+        # poly-G linker hack for multi-chain (handled in
+        # prepare_proteins.setUpESMFoldCalculation). Cached weights live at
+        # /gpfs/projects/bsc72/Programs/models/esmfold_v1 (8.4 GB pytorch_model.bin).
+        # System anaconda/2023.07 ships torch 2.2.1+cu121 + transformers 4.29.2 +
+        # EsmForProteinFolding, so no custom env is needed.
+        if modules == None:
+            modules = ["anaconda/2023.07"]
+        else:
+            modules += ["anaconda/2023.07"]
+        extras = [
+            "export HF_HUB_OFFLINE=1",
+            "export TRANSFORMERS_OFFLINE=1",
+        ]
+        if partition == "gp_bscls":
+            partition = "acc_bscls"
+
+    if program == "esmfold2":
+        # ESMFold2 (Biohub, 2026, MIT). AF3-like cofolder with CCD ligands,
+        # built on ESMC-6B. Env at /gpfs/projects/bsc72/conda_envs/esmfold2
+        # (Python 3.12, torch 2.7.0+cu126 — pinned for the node driver; the
+        # pip-default cu130 build is too new and fails CUDA init). Model +
+        # CCD weights cached under HF_HOME. The commands produced by
+        # prepare_proteins.sequenceModels.setUpESMFold2 invoke the env's
+        # python explicitly (`<env>/bin/python fold.py`), because
+        # `source activate` does not switch the interpreter in non-interactive
+        # SLURM shells — so here we only load CUDA and set the offline vars.
+        if modules == None:
+            modules = ["cuda/12.6"]
+        else:
+            modules += ["cuda/12.6"]
+        extras = [
+            "export HF_HOME=/gpfs/projects/bsc72/mfloor/envs/huggingface_cache",
+            "export HF_HUB_OFFLINE=1",
+            "export TRANSFORMERS_OFFLINE=1",
+        ]
+        if partition == "gp_bscls":
+            partition = "acc_bscls"
+
     #! Partitions
     available_partitions = ["acc_debug", "acc_bscls", "gp_debug", "gp_bscls"]
 
@@ -623,6 +725,7 @@ def singleJob(
     conda_eval_bash=False,
     pathMN=None,
     exports=None,
+    module_purge=False,
 ):
 
     # Check PYTHONPATH variable
