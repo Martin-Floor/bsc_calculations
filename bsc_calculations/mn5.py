@@ -171,6 +171,7 @@ def jobArrays(
         "ligandmpnn",
         "mlcg",
         "bindcraft",
+        "orca",
     ]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
@@ -401,6 +402,35 @@ def jobArrays(
             sources = []
         sources.append('/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup')
         pathMN.append("/gpfs/projects/bsc72/Programs/cp2k-2025.2.clean/exe/local")
+
+    if program == "orca":
+        # ORCA is CPU-only -> runs on the gp partition (do NOT remap gp_bscls
+        # to acc_bscls the way the GPU programs do). The MN5 login default
+        # loads Intel MPI (impi), which conflicts with the OpenMPI that ORCA
+        # 5.0.3 is built against, so unload it first, then load the OpenMPI +
+        # ORCA stack. NOTE: ORCA is pure-MPI -- request ntasks == %pal nprocs
+        # (1 cpu/task); ntasks=1 + cpus_per_task=N makes OpenMPI see one slot
+        # and ORCA aborts in GTOInt ("mpirun -np N" with 1 slot).
+        if unload_modules is None:
+            unload_modules = []
+        elif isinstance(unload_modules, str):
+            unload_modules = [unload_modules]
+        if "impi" not in unload_modules:
+            unload_modules.append("impi")
+        orca_modules = ["openmpi/4.1.5", "orca/5.0.3"]
+        if modules is None:
+            modules = orca_modules
+        else:
+            modules += orca_modules
+        # The orca/5.0.3 module's prepend_path does not reliably reach a
+        # non-interactive batch shell, and ORCA needs the binary's absolute
+        # path for mpirun-spawned workers. Pin the MN5-GPP binary dir on PATH
+        # (orca_2mkl, orca_vpot, ...) and export ORCA_BIN; users write
+        # `${ORCA_BIN} input.inp > input.out`.
+        pathMN.append("/apps/GPP/ORCA/5.0.3/OPENMPI")
+        if exports is None:
+            exports = []
+        exports.append("ORCA_BIN=/apps/GPP/ORCA/5.0.3/OPENMPI/orca")
 
     if program == "boltz2":
         if modules == None:
