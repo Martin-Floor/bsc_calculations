@@ -415,12 +415,23 @@ def jobArrays(
         # TightSCF on a 63 k-atom solvated substrate, benched 2026-06-13):
         # the DL_POLY linked-library path peaks at ~156 GB resident, so
         # ``cpus-per-task=32`` on the highmem partition (8 GB/cpu ->
-        # 256 GB) is the minimum that survives without OOM. ORCA's MPI
-        # scaling saturates at ``nprocs=4`` for this QM region; the
-        # validated optimum is ``cpus-per-task=32`` + ``nprocs=4`` +
-        # ``OMP_NUM_THREADS=8`` (= 4x8 = 32 threads), giving ~9 min wall
-        # per QM/MM SP+gradient, matched by every larger allocation
-        # tested up to a full 112-core node.
+        # 256 GB) is the minimum that survives without OOM.
+        #
+        # ORCA in MPI parallel (``%pal nprocs N end`` with N > 1) is
+        # currently BROKEN with this stack: ``orca_gtoint_mpi`` aborts
+        # mid-SP with HYDRA-launcher errors because orca/5.0.3 expects
+        # Intel MPI internally while ChemShell drives mpirun through
+        # openmpi/4.1.5-gcc, and the toolchains do not mix. The crash
+        # is masked -- chemsh prints "ORCA ran successfully" and exits
+        # before parseMainOutput hits "cannot reshape array of size 0".
+        # Until ORCA is rebuilt against openmpi/4.1.5-gcc or the
+        # openmpi/intel-mpi bundling in orca/5.0.3 is fixed, use
+        # SERIAL ORCA (do NOT pass ``nprocs`` to ChemShell builders;
+        # let it default to 1). At ``cpus-per-task=32`` OpenBLAS
+        # threading inside the serial ORCA still uses the box, giving
+        # ~30 min wall per QM/MM SP+gradient. With ``nprocs=4..32`` the
+        # bench reported ~9 min, but every one of those was a silent
+        # crash -- no energy was actually computed.
         module_purge = True
         chemsh_modules = ['openmpi/4.1.5-gcc', 'orca/5.0.3']
         if modules is None:
