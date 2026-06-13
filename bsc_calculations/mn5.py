@@ -167,6 +167,7 @@ def jobArrays(
         "RFDiffusion",
         "bioemu_af",
         "cp2k",
+        "chemshell",
         "boltz2",
         "ligandmpnn",
         "mlcg",
@@ -401,6 +402,54 @@ def jobArrays(
             sources = []
         sources.append('/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup')
         pathMN.append("/gpfs/projects/bsc72/Programs/cp2k-2025.2.clean/exe/local")
+
+    if program == "chemshell":
+        # Py-ChemShell 25.0.5 on MN5 GPP, built against openmpi/4.1.5-gcc
+        # with a linked DL_POLY 5.1.0 from /gpfs/projects/bsc72/mfloor/
+        # dl-poly. The chemsh.x binary calls ORCA 5.0.3 by system() for
+        # the QM step and invokes the linked libdl_poly.so via runLib()
+        # for the MM step (so MM energies populate); the full build
+        # recipe lives in the project's mn5_chemshell_mpi_build memo.
+        #
+        # Sizing (80-atom QM region under B3LYP/def2-SVP/D3BJ/RIJCOSX/
+        # TightSCF on a 63 k-atom solvated substrate, benched 2026-06-13):
+        # the DL_POLY linked-library path peaks at ~156 GB resident, so
+        # ``cpus-per-task=32`` on the highmem partition (8 GB/cpu ->
+        # 256 GB) is the minimum that survives without OOM. ORCA's MPI
+        # scaling saturates at ``nprocs=4`` for this QM region; the
+        # validated optimum is ``cpus-per-task=32`` + ``nprocs=4`` +
+        # ``OMP_NUM_THREADS=8`` (= 4x8 = 32 threads), giving ~9 min wall
+        # per QM/MM SP+gradient, matched by every larger allocation
+        # tested up to a full 112-core node.
+        module_purge = True
+        chemsh_modules = ['openmpi/4.1.5-gcc', 'orca/5.0.3']
+        if modules is None:
+            modules = chemsh_modules
+        else:
+            modules += chemsh_modules
+        if exports is None:
+            exports = []
+        # The orca/5.0.3 module's prepend_path on LD_LIBRARY_PATH does
+        # not always survive a module-purge-clean environment, so export
+        # the ORCA library dir explicitly. Without this orca crashes
+        # with "liborca_tools_5_0_3.so.5: cannot open shared object
+        # file" on the first QM step.
+        exports.append('ORCA_BIN=/apps/GPP/ORCA/5.0.3/OPENMPI/orca')
+        exports.append('LD_LIBRARY_PATH=/apps/GPP/ORCA/5.0.3/OPENMPI:${LD_LIBRARY_PATH}')
+        exports.append('CHEMSH_ROOT=/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5')
+        exports.append('CHEMSH_ARCH=gnu')
+        # The chemsh.x launcher, ORCA binaries and the patched DL_POLY
+        # binaries on PATH so ``chemsh system.py`` and the downstream
+        # tools resolve directly.
+        pathMN.append('/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5/bin/gnu')
+        pathMN.append('/apps/GPP/ORCA/5.0.3/OPENMPI')
+        pathMN.append('/gpfs/projects/bsc72/mfloor/dl-poly/build/bin')
+        # Pair with the conda env the build was linked against (Python
+        # 3.12.11 + numpy 2.2.6); activating any other env will fail
+        # with ABI errors on the ChemShell Python module imports.
+        conda_env = '/gpfs/projects/bsc72/mfloor/conda_envs/chemshell_qmmm'
+        # ChemShell QM/MM is a CPU code: stay on the requested CPU
+        # partition (gp_bscls / gp_debug) -- do NOT auto-route to GPU.
 
     if program == "boltz2":
         if modules == None:
