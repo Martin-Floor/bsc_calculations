@@ -167,6 +167,7 @@ def jobArrays(
         "RFDiffusion",
         "bioemu_af",
         "cp2k",
+        "chemshell",
         "boltz2",
         "ligandmpnn",
         "mlcg",
@@ -401,6 +402,120 @@ def jobArrays(
             sources = []
         sources.append('/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup')
         pathMN.append("/gpfs/projects/bsc72/Programs/cp2k-2025.2.clean/exe/local")
+
+    if program == "chemshell":
+        # Py-ChemShell 25.0.5 on MN5 GPP, built against openmpi/4.1.5-gcc
+        # with a linked DL_POLY 5.1.0 from /gpfs/projects/bsc72/mfloor/
+        # dl-poly. The chemsh.x binary calls ORCA 5.0.3 by system() for
+        # the QM step and invokes the linked libdl_poly.so via runLib()
+        # for the MM step (so MM energies populate); the full build
+        # recipe lives in the project's mn5_chemshell_mpi_build memo.
+        #
+        # Sizing (80-atom QM region under B3LYP/def2-SVP/D3BJ/RIJCOSX/
+        # TightSCF on a 63 k-atom solvated substrate, benched 2026-06-13):
+        # the DL_POLY linked-library path peaks at ~156 GB resident, so
+        # ``cpus-per-task=32`` on the highmem partition (8 GB/cpu ->
+        # 256 GB) is the minimum that survives without OOM.
+        #
+        # MPI history (resolved 2026-06-14): an earlier verdict that ORCA
+        # MPI was "broken" turned out to be two separate bugs in the
+        # hand-rolled launchers that DIDN'T go through this preset:
+        #   (a) ``module unload impi`` alone (no ``module purge``) left
+        #       Intel MPI auto-loaded via ``bsc/1.0``, so ORCA's mpirun
+        #       call landed on Intel Hydra and choked on OpenMPI's
+        #       ``--oversubscribe`` flag;
+        #   (b) even with the right OpenMPI mpirun, SLURM's
+        #       ``--ntasks=1`` only exposes 1 MPI slot, so ORCA's
+        #       ``mpirun -np N`` (with N > 1) is refused by OpenMPI
+        #       unless oversubscribe is explicitly enabled.
+        # This preset fixes both: ``module_purge=True`` wipes the impi
+        # residue, and ``OMPI_MCA_rmaps_base_oversubscribe=1`` lets
+        # OpenMPI accept ``nprocs > SLURM_NTASKS`` from inside the
+        # ChemShell-driven ORCA call. Verified 2026-06-14: ORCA QM/MM
+        # SP at ``nprocs=4`` now SCF-converges and writes
+        # ``FINAL SINGLE POINT ENERGY``.
+        module_purge = True
+        chemsh_modules = ['openmpi/4.1.5-gcc', 'orca/5.0.3']
+        if modules is None:
+            modules = chemsh_modules
+        else:
+            modules += chemsh_modules
+        if exports is None:
+            exports = []
+        # The orca/5.0.3 module's prepend_path on LD_LIBRARY_PATH does
+        # not always survive a module-purge-clean environment, so export
+        # the ORCA library dir explicitly. Without this orca crashes
+        # with "liborca_tools_5_0_3.so.5: cannot open shared object
+        # file" on the first QM step.
+        exports.append('ORCA_BIN=/apps/GPP/ORCA/5.0.3/OPENMPI/orca')
+        exports.append('LD_LIBRARY_PATH=/apps/GPP/ORCA/5.0.3/OPENMPI:${LD_LIBRARY_PATH}')
+        exports.append('CHEMSH_ROOT=/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5')
+        exports.append('CHEMSH_ARCH=gnu')
+        # ChemShell drives ORCA from a single chemsh.x process (SLURM
+        # sees ``--ntasks=1``), but the user can still request
+        # ``%pal nprocs N`` in the ORCA input for the QM step. OpenMPI
+        # 4.1.5 enforces #processes <= #SLURM-slots by default, so any
+        # N > 1 fails with "not enough slots; use --oversubscribe".
+        # Setting this MCA env var globally permits oversubscription
+        # so the ORCA-spawned mpirun call succeeds without ORCA having
+        # to add ``--oversubscribe`` to its mpirun command line.
+        exports.append('OMPI_MCA_rmaps_base_oversubscribe=1')
+        # The chemsh.x launcher, ORCA binaries and the patched DL_POLY
+        # binaries on PATH so ``chemsh system.py`` and the downstream
+        # tools resolve directly.
+        pathMN.append('/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5/bin/gnu')
+        pathMN.append('/apps/GPP/ORCA/5.0.3/OPENMPI')
+        pathMN.append('/gpfs/projects/bsc72/mfloor/dl-poly/build/bin')
+        # Pair with the conda env the build was linked against (Python
+        # 3.12.11 + numpy 2.2.6); activating any other env will fail
+        # with ABI errors on the ChemShell Python module imports.
+        conda_env = '/gpfs/projects/bsc72/mfloor/conda_envs/chemshell_qmmm'
+        # ChemShell QM/MM is a CPU code: stay on the requested CPU
+        # partition (gp_bscls / gp_debug) -- do NOT auto-route to GPU.
+        #
+        # ChemShell + linked DL_POLY needs a background watcher to copy
+        # _dl_poly.inp -> CONTROL (DL_POLY's runLib path reads CONTROL,
+        # but chemsh writes _dl_poly.inp fresh each cycle), plus a clean
+        # working directory at the start (otherwise stale CONFIG / FIELD
+        # / REVCON / _orca.* from a prior failed run get reused and
+        # silently corrupt the next QM/MM step).
+        #
+        # Emit a ``chemshell_run`` bash helper that wraps stale-file
+        # cleanup + watcher start + chemsh invocation + watcher stop +
+        # exit code propagation. Callers' jobs should be:
+        #
+        #     cd /path/to/run_dir && chemshell_run system.py
+        #
+        # The helper takes the ChemShell driver basename as its single
+        # positional argument (defaults to ``system.py``).
+        if extras is None:
+            extras = []
+        extras.extend([
+            "# Helper wired by mn5.jobArrays(program='chemshell'): runs",
+            "# the ChemShell driver with the stale-file cleanup and the",
+            "# DL_POLY-runLib CONTROL watcher both handled. Call as",
+            "# `cd <run_dir> && chemshell_run [driver.py]`.",
+            "chemshell_run() {",
+            "    local driver=${1:-system.py}",
+            "    rm -f CONFIG FIELD CONTROL OUTPUT STATIS REVCON REVIVE \\",
+            "          _dl_poly.inp _dl_poly.out _chemsh_run.log chemsh_log.txt \\",
+            "          _orca.inp _orca.out _orca.gbw _orca.engrad \\",
+            "          qmbio_chemshell_result.json test_status",
+            "    (",
+            "        while true; do",
+            "            if [ -f _dl_poly.inp ] && [ ! -f CONTROL ]; then",
+            "                cp _dl_poly.inp CONTROL",
+            "            fi",
+            "            sleep 1",
+            "        done",
+            "    ) &",
+            "    local watcher_pid=$!",
+            "    chemsh \"$driver\" 2>&1 | tee chemsh_log.txt",
+            "    local rc=${PIPESTATUS[0]}",
+            "    kill $watcher_pid 2>/dev/null",
+            "    return $rc",
+            "}",
+        ])
 
     if program == "boltz2":
         if modules == None:
