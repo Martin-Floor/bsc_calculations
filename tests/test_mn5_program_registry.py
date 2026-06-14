@@ -56,6 +56,9 @@ def test_chemshell_preset_cpu(tmp_path, monkeypatch):
         "/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5/bin/gnu",
         "/apps/GPP/ORCA/5.0.3/OPENMPI",
         "/gpfs/projects/bsc72/mfloor/dl-poly/build/bin",
+        "chemshell_run() {",
+        "if [ -f _dl_poly.inp ] && [ ! -f CONTROL ]; then",
+        'chemsh "$driver"',
     ):
         assert marker in text, f"missing {marker!r}"
     # CPU code: must NOT be re-routed to a GPU (acc) partition.

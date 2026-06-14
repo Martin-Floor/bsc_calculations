@@ -472,6 +472,50 @@ def jobArrays(
         conda_env = '/gpfs/projects/bsc72/mfloor/conda_envs/chemshell_qmmm'
         # ChemShell QM/MM is a CPU code: stay on the requested CPU
         # partition (gp_bscls / gp_debug) -- do NOT auto-route to GPU.
+        #
+        # ChemShell + linked DL_POLY needs a background watcher to copy
+        # _dl_poly.inp -> CONTROL (DL_POLY's runLib path reads CONTROL,
+        # but chemsh writes _dl_poly.inp fresh each cycle), plus a clean
+        # working directory at the start (otherwise stale CONFIG / FIELD
+        # / REVCON / _orca.* from a prior failed run get reused and
+        # silently corrupt the next QM/MM step).
+        #
+        # Emit a ``chemshell_run`` bash helper that wraps stale-file
+        # cleanup + watcher start + chemsh invocation + watcher stop +
+        # exit code propagation. Callers' jobs should be:
+        #
+        #     cd /path/to/run_dir && chemshell_run system.py
+        #
+        # The helper takes the ChemShell driver basename as its single
+        # positional argument (defaults to ``system.py``).
+        if extras is None:
+            extras = []
+        extras.extend([
+            "# Helper wired by mn5.jobArrays(program='chemshell'): runs",
+            "# the ChemShell driver with the stale-file cleanup and the",
+            "# DL_POLY-runLib CONTROL watcher both handled. Call as",
+            "# `cd <run_dir> && chemshell_run [driver.py]`.",
+            "chemshell_run() {",
+            "    local driver=${1:-system.py}",
+            "    rm -f CONFIG FIELD CONTROL OUTPUT STATIS REVCON REVIVE \\",
+            "          _dl_poly.inp _dl_poly.out _chemsh_run.log chemsh_log.txt \\",
+            "          _orca.inp _orca.out _orca.gbw _orca.engrad \\",
+            "          qmbio_chemshell_result.json test_status",
+            "    (",
+            "        while true; do",
+            "            if [ -f _dl_poly.inp ] && [ ! -f CONTROL ]; then",
+            "                cp _dl_poly.inp CONTROL",
+            "            fi",
+            "            sleep 1",
+            "        done",
+            "    ) &",
+            "    local watcher_pid=$!",
+            "    chemsh \"$driver\" 2>&1 | tee chemsh_log.txt",
+            "    local rc=${PIPESTATUS[0]}",
+            "    kill $watcher_pid 2>/dev/null",
+            "    return $rc",
+            "}",
+        ])
 
     if program == "boltz2":
         if modules == None:
