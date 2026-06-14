@@ -52,6 +52,7 @@ def test_chemshell_preset_cpu(tmp_path, monkeypatch):
         "LD_LIBRARY_PATH=/apps/GPP/ORCA/5.0.3/OPENMPI:${LD_LIBRARY_PATH}",
         "CHEMSH_ROOT=/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5",
         "CHEMSH_ARCH=gnu",
+        "OMPI_MCA_rmaps_base_oversubscribe=1",
         "/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5/bin/gnu",
         "/apps/GPP/ORCA/5.0.3/OPENMPI",
         "/gpfs/projects/bsc72/mfloor/dl-poly/build/bin",

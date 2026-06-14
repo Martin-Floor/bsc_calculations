@@ -417,21 +417,23 @@ def jobArrays(
         # ``cpus-per-task=32`` on the highmem partition (8 GB/cpu ->
         # 256 GB) is the minimum that survives without OOM.
         #
-        # ORCA in MPI parallel (``%pal nprocs N end`` with N > 1) is
-        # currently BROKEN with this stack: ``orca_gtoint_mpi`` aborts
-        # mid-SP with HYDRA-launcher errors because orca/5.0.3 expects
-        # Intel MPI internally while ChemShell drives mpirun through
-        # openmpi/4.1.5-gcc, and the toolchains do not mix. The crash
-        # is masked -- chemsh prints "ORCA ran successfully" and exits
-        # before parseMainOutput hits "cannot reshape array of size 0".
-        # Until ORCA is rebuilt against openmpi/4.1.5-gcc or the
-        # openmpi/intel-mpi bundling in orca/5.0.3 is fixed, use
-        # SERIAL ORCA (do NOT pass ``nprocs`` to ChemShell builders;
-        # let it default to 1). At ``cpus-per-task=32`` OpenBLAS
-        # threading inside the serial ORCA still uses the box, giving
-        # ~30 min wall per QM/MM SP+gradient. With ``nprocs=4..32`` the
-        # bench reported ~9 min, but every one of those was a silent
-        # crash -- no energy was actually computed.
+        # MPI history (resolved 2026-06-14): an earlier verdict that ORCA
+        # MPI was "broken" turned out to be two separate bugs in the
+        # hand-rolled launchers that DIDN'T go through this preset:
+        #   (a) ``module unload impi`` alone (no ``module purge``) left
+        #       Intel MPI auto-loaded via ``bsc/1.0``, so ORCA's mpirun
+        #       call landed on Intel Hydra and choked on OpenMPI's
+        #       ``--oversubscribe`` flag;
+        #   (b) even with the right OpenMPI mpirun, SLURM's
+        #       ``--ntasks=1`` only exposes 1 MPI slot, so ORCA's
+        #       ``mpirun -np N`` (with N > 1) is refused by OpenMPI
+        #       unless oversubscribe is explicitly enabled.
+        # This preset fixes both: ``module_purge=True`` wipes the impi
+        # residue, and ``OMPI_MCA_rmaps_base_oversubscribe=1`` lets
+        # OpenMPI accept ``nprocs > SLURM_NTASKS`` from inside the
+        # ChemShell-driven ORCA call. Verified 2026-06-14: ORCA QM/MM
+        # SP at ``nprocs=4`` now SCF-converges and writes
+        # ``FINAL SINGLE POINT ENERGY``.
         module_purge = True
         chemsh_modules = ['openmpi/4.1.5-gcc', 'orca/5.0.3']
         if modules is None:
@@ -449,6 +451,15 @@ def jobArrays(
         exports.append('LD_LIBRARY_PATH=/apps/GPP/ORCA/5.0.3/OPENMPI:${LD_LIBRARY_PATH}')
         exports.append('CHEMSH_ROOT=/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5')
         exports.append('CHEMSH_ARCH=gnu')
+        # ChemShell drives ORCA from a single chemsh.x process (SLURM
+        # sees ``--ntasks=1``), but the user can still request
+        # ``%pal nprocs N`` in the ORCA input for the QM step. OpenMPI
+        # 4.1.5 enforces #processes <= #SLURM-slots by default, so any
+        # N > 1 fails with "not enough slots; use --oversubscribe".
+        # Setting this MCA env var globally permits oversubscription
+        # so the ORCA-spawned mpirun call succeeds without ORCA having
+        # to add ``--oversubscribe`` to its mpirun command line.
+        exports.append('OMPI_MCA_rmaps_base_oversubscribe=1')
         # The chemsh.x launcher, ORCA binaries and the patched DL_POLY
         # binaries on PATH so ``chemsh system.py`` and the downstream
         # tools resolve directly.
