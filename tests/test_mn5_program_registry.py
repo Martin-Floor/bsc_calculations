@@ -103,3 +103,45 @@ def test_q6_preset_cpu(tmp_path, monkeypatch):
     # CPU code: stays on the requested CPU partition.
     assert "--qos=gp_bscls" in text
     assert "acc_bscls" not in text
+
+
+def test_program_registry_lists_orca():
+    """available_programs in mn5.py should include orca."""
+    import inspect
+    src = inspect.getsource(mn5.jobArrays)
+    assert '"orca"' in src
+
+
+def test_orca_preset_native_parallel(tmp_path, monkeypatch):
+    """program='orca' loads the MN5 GPP ORCA-native parallel stack: unload
+    impi (NOT purge), plain openmpi/4.1.5 (NOT -gcc), orca/5.0.3, the
+    OPENMPI bindir on PATH, and the ORCA_BIN / LD_LIBRARY_PATH exports.
+    Stays on the requested CPU partition."""
+    monkeypatch.chdir(tmp_path)
+    script_path = tmp_path / "run.sh"
+    mn5.jobArrays(
+        jobs=["orca_mm -convff -AMBER system.prmtop && ${ORCA_BIN} system.inp > system.out"],
+        script_name=str(script_path),
+        job_name="orca_job",
+        partition="gp_bscls",
+        ntasks=8,
+        cpus_per_task=4,
+        time=12,
+        program="orca",
+    )
+    text = _read_script(script_path)
+    for marker in (
+        "module unload impi",
+        "module load openmpi/4.1.5\n",
+        "module load orca/5.0.3",
+        "ORCA_BIN=/apps/GPP/ORCA/5.0.3/OPENMPI/orca",
+        "LD_LIBRARY_PATH=/apps/GPP/ORCA/5.0.3/OPENMPI:${LD_LIBRARY_PATH}",
+        "/apps/GPP/ORCA/5.0.3/OPENMPI",
+    ):
+        assert marker in text, f"missing {marker!r}"
+    # native path: NOT the ChemShell-gcc OpenMPI, NOT a full module purge.
+    assert "openmpi/4.1.5-gcc" not in text
+    assert "module purge" not in text
+    # CPU code: must stay on the requested gp partition.
+    assert "--qos=gp_bscls" in text
+    assert "acc_bscls" not in text
