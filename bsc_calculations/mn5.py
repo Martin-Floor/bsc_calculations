@@ -542,8 +542,19 @@ def jobArrays(
         # ChemShell-driven ORCA call. Verified 2026-06-14: ORCA QM/MM
         # SP at ``nprocs=4`` now SCF-converges and writes
         # ``FINAL SINGLE POINT ENERGY``.
-        module_purge = True
-        chemsh_modules = ['openmpi/4.1.5-gcc', 'orca/5.0.3']
+        # NO `module purge`: ORCA's parallel binary (orca_gtoint_mpi) is built
+        # against the Intel-compiled openmpi/4.1.5 (the GPP default), and that
+        # module needs a prerequisite stack which `module purge` strips (the
+        # `-gcc` variant tolerated purge, the Intel one does not). Use
+        # `module unload impi` instead -- same handling as program="orca" --
+        # so ORCA's MPI binary matches its build. chemsh.x is ABI-compatible
+        # with the same OpenMPI 4.1.5 (libmpi.so.40), so this serves both the
+        # serial driver and the parallel ORCA QM step.
+        if unload_modules is None:
+            unload_modules = []
+        if "impi" not in unload_modules:
+            unload_modules.append("impi")
+        chemsh_modules = ['openmpi/4.1.5', 'orca/5.0.3']
         if modules is None:
             modules = chemsh_modules
         else:
@@ -559,15 +570,16 @@ def jobArrays(
         exports.append('LD_LIBRARY_PATH=/apps/GPP/ORCA/5.0.3/OPENMPI:${LD_LIBRARY_PATH}')
         exports.append('CHEMSH_ROOT=/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5')
         exports.append('CHEMSH_ARCH=gnu')
-        # ChemShell drives ORCA from a single chemsh.x process (SLURM
-        # sees ``--ntasks=1``), but the user can still request
-        # ``%pal nprocs N`` in the ORCA input for the QM step. OpenMPI
-        # 4.1.5 enforces #processes <= #SLURM-slots by default, so any
-        # N > 1 fails with "not enough slots; use --oversubscribe".
-        # Setting this MCA env var globally permits oversubscription
-        # so the ORCA-spawned mpirun call succeeds without ORCA having
-        # to add ``--oversubscribe`` to its mpirun command line.
-        exports.append('OMPI_MCA_rmaps_base_oversubscribe=1')
+        # Parallel ORCA QM step (`%pal nprocs N`): request N REAL SLURM slots
+        # (`ntasks=N`, like program="orca") -- NOT ntasks=1 + oversubscribe.
+        # The real blocker for parallel ORCA under ChemShell is that chemsh.x
+        # runs as an OpenMPI *singleton* and leaks OMPI_MCA_ess=singleton /
+        # OMPI_APP_CTX_NUM_PROCS=1 into ORCA's environment; ORCA's nested
+        # `mpirun -np N` then launches N orca_gtoint_mpi ranks that each believe
+        # they are a 1-proc singleton and abort silently in GTOInt. The env-strip
+        # ORCA wrapper (ORCA_EXE) emitted below removes the inherited
+        # OMPI_/PMIX_/PMI_ vars before ORCA runs, which fixes it. Harmless for
+        # serial ORCA (no ranks to confuse), so it is always emitted.
         # The chemsh.x launcher, ORCA binaries and the patched DL_POLY
         # binaries on PATH so ``chemsh system.py`` and the downstream
         # tools resolve directly.
@@ -599,6 +611,21 @@ def jobArrays(
         if extras is None:
             extras = []
         extras.extend([
+            "# Env-strip ORCA wrapper: chemsh.x leaks OpenMPI singleton vars",
+            "# (OMPI_MCA_ess=singleton, OMPI_APP_CTX_NUM_PROCS=1) into the ORCA",
+            "# child, making ORCA's nested `mpirun -np N` crash orca_gtoint_mpi.",
+            "# Strip OMPI_/PMIX_/PMI_/HYDRA_/I_MPI_ before ORCA runs. ORCA_EXE",
+            "# points the qmbio driver (and chemsh) at this wrapper. No-op for",
+            "# serial ORCA. Requires N real SLURM slots (ntasks=N) for nprocs=N.",
+            'mkdir -p "$SLURM_SUBMIT_DIR/_orcawrap"',
+            "cat > \"$SLURM_SUBMIT_DIR/_orcawrap/orca\" <<'ORCAWRAP'",
+            "#!/bin/bash",
+            "for v in $(env | grep -oE '^(OMPI_|PMIX_|PMI_|HYDRA_|I_MPI_)[A-Za-z0-9_]+'); do unset \"$v\"; done",
+            'exec /apps/GPP/ORCA/5.0.3/OPENMPI/orca "$@"',
+            "ORCAWRAP",
+            'chmod +x "$SLURM_SUBMIT_DIR/_orcawrap/orca"',
+            'export ORCA_EXE="$SLURM_SUBMIT_DIR/_orcawrap/orca"',
+            "",
             "# Helper wired by mn5.jobArrays(program='chemshell'): runs",
             "# the ChemShell driver with the stale-file cleanup and the",
             "# DL_POLY-runLib CONTROL watcher both handled. Call as",

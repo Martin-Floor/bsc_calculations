@@ -26,33 +26,37 @@ def test_program_registry_lists_chemshell():
 
 
 def test_chemshell_preset_cpu(tmp_path, monkeypatch):
-    """program='chemshell' loads the MN5 GPP ChemShell stack (openmpi-gcc +
-    orca/5.0.3), activates the chemshell_qmmm conda env, extends PATH with
-    the chemsh.x launcher + ORCA + DL_POLY, exports the LD_LIBRARY_PATH
-    workaround for orca/5.0.3, and stays on the requested CPU partition."""
+    """program='chemshell' loads the MN5 GPP ChemShell stack (Intel openmpi/4.1.5
+    + orca/5.0.3, via `module unload impi` not purge), activates the
+    chemshell_qmmm conda env, extends PATH with the chemsh.x launcher + ORCA +
+    DL_POLY, emits the env-strip ORCA wrapper (ORCA_EXE) that lets parallel ORCA
+    run under ChemShell, and stays on the requested CPU partition."""
     monkeypatch.chdir(tmp_path)
     script_path = tmp_path / "run.sh"
     mn5.jobArrays(
-        jobs=["chemsh system.py > chemsh.log 2>&1"],
+        jobs=["chemshell_run system.py > chemsh.log 2>&1"],
         script_name=str(script_path),
         job_name="chemsh_job",
         partition="gp_bscls",
-        ntasks=1,
-        cpus_per_task=32,
+        ntasks=8,
+        cpus_per_task=4,
         time=12,
         program="chemshell",
     )
     text = _read_script(script_path)
     for marker in (
-        "module purge",
-        "module load openmpi/4.1.5-gcc",
+        "module unload impi",
+        "module load openmpi/4.1.5\n",   # Intel build ORCA's orca_gtoint_mpi needs
         "module load orca/5.0.3",
         "source activate /gpfs/projects/bsc72/mfloor/conda_envs/chemshell_qmmm",
         "ORCA_BIN=/apps/GPP/ORCA/5.0.3/OPENMPI/orca",
         "LD_LIBRARY_PATH=/apps/GPP/ORCA/5.0.3/OPENMPI:${LD_LIBRARY_PATH}",
         "CHEMSH_ROOT=/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5",
         "CHEMSH_ARCH=gnu",
-        "OMPI_MCA_rmaps_base_oversubscribe=1",
+        # env-strip ORCA wrapper (fixes parallel orca_gtoint_mpi under ChemShell)
+        'mkdir -p "$SLURM_SUBMIT_DIR/_orcawrap"',
+        "OMPI_|PMIX_|PMI_|HYDRA_|I_MPI_",
+        'export ORCA_EXE="$SLURM_SUBMIT_DIR/_orcawrap/orca"',
         "/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5/bin/gnu",
         "/apps/GPP/ORCA/5.0.3/OPENMPI",
         "/gpfs/projects/bsc72/mfloor/dl-poly/build/bin",
@@ -61,6 +65,10 @@ def test_chemshell_preset_cpu(tmp_path, monkeypatch):
         'chemsh "$driver"',
     ):
         assert marker in text, f"missing {marker!r}"
+    # the superseded approach must be gone
+    assert "module purge" not in text
+    assert "openmpi/4.1.5-gcc" not in text
+    assert "OMPI_MCA_rmaps_base_oversubscribe" not in text
     # CPU code: must NOT be re-routed to a GPU (acc) partition.
     assert "--qos=gp_bscls" in text
     assert "acc_bscls" not in text
