@@ -172,6 +172,7 @@ def jobArrays(
         "ligandmpnn",
         "mlcg",
         "bindcraft",
+        "mood",
     ]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
@@ -306,6 +307,51 @@ def jobArrays(
     if program == "ligandmpnn":
         conda_env = "/gpfs/projects/bsc72/conda_envs/ligandmpnn"
 
+    if program == "mood":
+        # MOOD multi-objective optimizer runs the outer driver via the
+        # miniforge system Python (no top-level conda_env). Inner metric
+        # subprocesses (ESMC, LigandMPNN, ...) activate their own envs
+        # through MOOD's --*-conda-env CLI flags, so we:
+        #  - load miniforge + source conda init so child `conda activate` works
+        #  - put MOOD on PYTHONPATH; point HuggingFace at the offline cache
+        #  - clear inherited CONDA_* state so that child `conda activate`
+        #    in metric subprocesses can swap python cleanly. On MN5,
+        #    `module load miniforge` leaks CONDA_PREFIX=ANACONDA/2023.07
+        #    while CONDA_PYTHON_EXE points at MINIFORGE — that conflicting
+        #    state makes child activations partial-fail (activate.d hooks
+        #    fire but PATH never updates), so `python` keeps resolving to
+        #    the outer miniforge 3.10 instead of the inner env's binary.
+        if modules is None:
+            modules = ["miniforge"]
+        elif "miniforge" not in modules:
+            modules += ["miniforge"]
+        miniforge_conda_sh = "/apps/ACC/MINIFORGE/24.3.0-0/etc/profile.d/conda.sh"
+        if sources is None:
+            sources = [miniforge_conda_sh]
+        elif miniforge_conda_sh not in sources:
+            sources = list(sources) + [miniforge_conda_sh]
+        mood_repo = "/gpfs/projects/bsc72/mfloor/Repos/multiObjectiveOptimizationDesign"
+        if mood_repo not in pythonpath:
+            pythonpath.append(mood_repo)
+        if exports is None:
+            exports = []
+        mood_exports = [
+            f"MOOD_REPO={mood_repo}",
+            "HF_HUB_CACHE=/gpfs/projects/bsc72/mfloor/cache/hf_hub",
+            "HF_HUB_OFFLINE=1",
+        ]
+        for e in mood_exports:
+            if e not in exports:
+                exports.append(e)
+        unset_line = (
+            "unset CONDA_PREFIX CONDA_DEFAULT_ENV CONDA_PYTHON_EXE "
+            "CONDA_SHLVL CONDA_PROMPT_MODIFIER CONDA_EXE _CE_M _CE_CONDA"
+        )
+        if unset_line not in extras:
+            extras.append(unset_line)
+        if partition == "gp_bscls":
+            partition = "acc_bscls"
+
     if program == "mlcg":
         conda_env = "/gpfs/projects/bsc72/conda_envs/mlcg"
 
@@ -318,14 +364,19 @@ def jobArrays(
         conda_env = "/gpfs/projects/bsc72/conda_envs/hmm"
 
     if program == "Q6":
-        q6_modules = ["oneapi", "q6"]
+        # Q6 EVB/FEP engine (Qprep6/Qdyn6/Qfep6 serial + Qdyn6p MPI) compiled on MN5
+        # 2026-06-21, plus the qtools input generators, both under bsc72 shared Programs.
+        # The previous preset pointed at a nonexistent "q6" module and another user's
+        # home (bsc072181) -- neither resolved on MN5; fixed to the real shared install.
+        q6_modules = ["openmpi/4.1.5-gcc"]  # runtime for the MPI binary Qdyn6p
         if modules == None:
             modules = q6_modules
         else:
             modules += q6_modules
 
+        pathMN.append("/gpfs/projects/bsc72/Programs/Q6/bin")
         extras = [
-            "source /home/bsc/bsc072181/programs/qtools/bin/qtools/qtools_init.sh"
+            "source /gpfs/projects/bsc72/Programs/qtools/qtools_init.sh"
         ]
 
     if program == "asitedesign":
@@ -739,6 +790,12 @@ def singleJob(
     pathMN=None,
     exports=None,
 ):
+
+    # Default: do not purge modules. The program-specific branches below may
+    # override this (e.g. program=="pele" sets module_purge=True). Without
+    # this initialisation, calling singleJob without `program` triggered an
+    # UnboundLocalError at the `if module_purge:` block downstream.
+    module_purge = False
 
     # Check PYTHONPATH variable
     if pythonpath == None:
