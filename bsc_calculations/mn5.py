@@ -466,7 +466,7 @@ def jobArrays(
         # GPP module. Submitting from the ACC login pulls /apps/ACC variants
         # and Intel impi, which break orca_mm and the liborca .so loads.
         #
-        # Module recipe (verified 2026-06-20 on a 8294-atom OYE QM/MM scan):
+        # Module recipe (MN5 GPP):
         #  - `module unload impi` (NOT `module purge`): purge wipes the base
         #    stack and breaks module resolution on GPP; unloading impi is
         #    enough to stop ORCA's mpirun from landing on Intel Hydra.
@@ -475,11 +475,11 @@ def jobArrays(
         #    orca's parallel binaries (orca_gtoint_mpi, orca_mm) run cleanly;
         #    the -gcc variant crashes orca_gtoint_mpi in the native path.
         #  - `orca/5.0.3`.
-        # Benchmark: nprocs=8 gave ~7x speedup over serial (QM/MM gradient
-        # ~1.8 min vs serial r2SCAN-3c ~12 min). Set SLURM --ntasks equal to
-        # the ORCA `%pal nprocs N` so OpenMPI has exactly N slots (no
-        # oversubscribe needed). nprocs=8 is the sweet spot for an ~80-atom
-        # QM region; beyond that the QM step stops scaling.
+        # Set SLURM --ntasks equal to the ORCA `%pal nprocs N` so OpenMPI has
+        # exactly N slots (no oversubscribe needed). The optimal nprocs is
+        # system-dependent (QM-region size, basis, exchange) and does not
+        # belong here -- benchmark per system and record the result in the
+        # project, not in this shared preset.
         if unload_modules is None:
             unload_modules = []
         if "impi" not in unload_modules:
