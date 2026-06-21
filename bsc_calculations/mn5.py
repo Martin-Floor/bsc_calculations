@@ -172,6 +172,7 @@ def jobArrays(
         "ligandmpnn",
         "mlcg",
         "bindcraft",
+        "orca",
     ]
 
     # available_programs = ['pele', 'peleffy', 'rosetta', 'predig', 'pyrosetta', 'rosetta2', 'blast',
@@ -402,6 +403,62 @@ def jobArrays(
             sources = []
         sources.append('/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup')
         pathMN.append("/gpfs/projects/bsc72/Programs/cp2k-2025.2.clean/exe/local")
+
+    if program == "orca":
+        # ORCA-native runs (QM-only OR ORCA's own QM/MM via orca_mm), MPI
+        # parallel. This is the path to use when ORCA drives the whole job
+        # itself -- NOT when ChemShell drives ORCA (use program="chemshell"
+        # for that; its module stack and oversubscribe handling differ).
+        #
+        # MUST be built/submitted from the GPP login node (marenostrum_gp):
+        # the binaries live under /apps/GPP/... and the matching OpenMPI is a
+        # GPP module. Submitting from the ACC login pulls /apps/ACC variants
+        # and Intel impi, which break orca_mm and the liborca .so loads.
+        #
+        # Module recipe (verified 2026-06-20 on a 8294-atom OYE QM/MM scan):
+        #  - `module unload impi` (NOT `module purge`): purge wipes the base
+        #    stack and breaks module resolution on GPP; unloading impi is
+        #    enough to stop ORCA's mpirun from landing on Intel Hydra.
+        #  - `openmpi/4.1.5` (NOT the `-gcc` variant chemshell uses): the
+        #    plain module resolves to the Intel-built OpenMPI, under which
+        #    orca's parallel binaries (orca_gtoint_mpi, orca_mm) run cleanly;
+        #    the -gcc variant crashes orca_gtoint_mpi in the native path.
+        #  - `orca/5.0.3`.
+        # Benchmark: nprocs=8 gave ~7x speedup over serial (QM/MM gradient
+        # ~1.8 min vs serial r2SCAN-3c ~12 min). Set SLURM --ntasks equal to
+        # the ORCA `%pal nprocs N` so OpenMPI has exactly N slots (no
+        # oversubscribe needed). nprocs=8 is the sweet spot for an ~80-atom
+        # QM region; beyond that the QM step stops scaling.
+        if unload_modules is None:
+            unload_modules = []
+        if "impi" not in unload_modules:
+            unload_modules.append("impi")
+        orca_modules = ["openmpi/4.1.5", "orca/5.0.3"]
+        if modules is None:
+            modules = orca_modules
+        else:
+            modules += orca_modules
+        # orca/5.0.3 only prepends /apps/GPP/ORCA/5.0.3/ to PATH, but the
+        # binaries (orca, orca_mm, orca_2mkl, ...) live in the OPENMPI/
+        # subdir. Add it so orca_mm resolves, and export it on
+        # LD_LIBRARY_PATH so liborca_tools_5_0_3.so loads.
+        pathMN.append("/apps/GPP/ORCA/5.0.3/OPENMPI")
+        if exports is None:
+            exports = []
+        for e in (
+            "ORCA_BIN=/apps/GPP/ORCA/5.0.3/OPENMPI/orca",
+            "LD_LIBRARY_PATH=/apps/GPP/ORCA/5.0.3/OPENMPI:${LD_LIBRARY_PATH}",
+        ):
+            if e not in exports:
+                exports.append(e)
+        # ORCA refuses parallel runs unless invoked by absolute path (the
+        # mpirun-spawned workers need it), so write `${ORCA_BIN} input.inp`.
+        # For ORCA-native QM/MM the job command must first convert the Amber
+        # topology to ORCA's force-field format, once per run dir:
+        #     orca_mm -convff -AMBER <stem>.prmtop   # -> <stem>.ORCAFF.prms
+        #     ${ORCA_BIN} system.inp > system.out
+        # (the qmbio ORCAQMMMInputBuilder already writes ORCAFFFilename as
+        # the converted <stem>.ORCAFF.prms name to match.)
 
     if program == "chemshell":
         # Py-ChemShell 25.0.5 on MN5 GPP, built against openmpi/4.1.5-gcc
