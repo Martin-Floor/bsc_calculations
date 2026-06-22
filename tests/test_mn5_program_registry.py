@@ -53,10 +53,12 @@ def test_chemshell_preset_cpu(tmp_path, monkeypatch):
         "LD_LIBRARY_PATH=/apps/GPP/ORCA/5.0.3/OPENMPI:${LD_LIBRARY_PATH}",
         "CHEMSH_ROOT=/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5",
         "CHEMSH_ARCH=gnu",
-        # env-strip ORCA wrapper (fixes parallel orca_gtoint_mpi under ChemShell)
-        'mkdir -p "$SLURM_SUBMIT_DIR/_orcawrap"',
+        # env-strip ORCA wrapper (fixes parallel orca_gtoint_mpi under ChemShell),
+        # per-job dir so concurrent jobs from one submit dir don't race the wrapper
+        'ORCAWRAP_DIR="$SLURM_SUBMIT_DIR/_orcawrap_${SLURM_JOB_ID}"',
+        'mkdir -p "$ORCAWRAP_DIR"',
         "OMPI_|PMIX_|PMI_|HYDRA_|I_MPI_",
-        'export ORCA_EXE="$SLURM_SUBMIT_DIR/_orcawrap/orca"',
+        'export ORCA_EXE="$ORCAWRAP_DIR/orca"',
         "/gpfs/projects/bsc72/mfloor/chemsh-py-25.0.5/bin/gnu",
         "/apps/GPP/ORCA/5.0.3/OPENMPI",
         "/gpfs/projects/bsc72/mfloor/dl-poly/build/bin",
