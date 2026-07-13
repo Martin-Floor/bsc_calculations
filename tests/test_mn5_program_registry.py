@@ -155,3 +155,43 @@ def test_orca_preset_native_parallel(tmp_path, monkeypatch):
     # CPU code: must stay on the requested gp partition.
     assert "--qos=gp_bscls" in text
     assert "acc_bscls" not in text
+
+
+# ---------------------------------------------------------------------------
+# nodes= kwarg  ->  #SBATCH --nodes=N  (single-node QM/MM, etc.)
+# ---------------------------------------------------------------------------
+import pytest
+
+
+def test_jobarrays_nodes_emits_sbatch_line(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    sp = tmp_path / "run.sh"
+    mn5.jobArrays(jobs=["echo hi"], script_name=str(sp), job_name="j",
+                  partition="gp_bscls", ntasks=16, cpus_per_task=4, time=48, nodes=1)
+    text = _read_script(sp)
+    assert "#SBATCH --nodes=1\n" in text
+
+
+def test_jobarrays_nodes_default_omitted(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    sp = tmp_path / "run.sh"
+    mn5.jobArrays(jobs=["echo hi"], script_name=str(sp), job_name="j",
+                  partition="gp_bscls", ntasks=1, cpus_per_task=1, time=1)
+    assert "--nodes" not in _read_script(sp)          # backward-compatible default
+
+
+def test_singlejob_nodes_emits_sbatch_line(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    sp = tmp_path / "run.sh"
+    mn5.singleJob(job="echo hi", script_name=str(sp), job_name="j",
+                  partition="gp_bscls", ntasks=16, cpus_per_task=4, time=(48, 0), nodes=1)
+    assert "#SBATCH --nodes=1\n" in _read_script(sp)
+
+
+def test_jobarrays_nodes_rejects_bad_value(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    sp = tmp_path / "run.sh"
+    for bad in (0, -1, 2.5, "1", True):
+        with pytest.raises(ValueError):
+            mn5.jobArrays(jobs=["echo hi"], script_name=str(sp), job_name="j",
+                          partition="gp_bscls", ntasks=1, cpus_per_task=1, time=1, nodes=bad)

@@ -10,6 +10,7 @@ def jobArrays(
     highmem=False,
     partition=None,
     cpus_per_task=None,
+    nodes=None,
     output=None,
     mail=None,
     time=None,
@@ -731,6 +732,10 @@ def jobArrays(
         sf.write("#!/bin/bash\n")
         sf.write("#SBATCH --job-name=" + job_name + "\n")
         sf.write("#SBATCH --qos=" + partition + "\n")
+        if nodes is not None:
+            if not isinstance(nodes, int) or isinstance(nodes, bool) or nodes < 1:
+                raise ValueError(f"nodes must be a positive integer, got {nodes!r}")
+            sf.write("#SBATCH --nodes=" + str(nodes) + "\n")
         sf.write("#SBATCH --time=" + sbatch_time + "\n")
         sf.write("#SBATCH --ntasks " + str(ntasks) + "\n")
         if "acc" in partition:
@@ -860,6 +865,7 @@ def singleJob(
     job_name=None,
     ntasks=1,
     cpus_per_task=112,
+    nodes=None,
     gpus=1,
     mem_per_cpu=None,
     highmem=False,
@@ -991,6 +997,10 @@ def singleJob(
         sf.write("#!/bin/bash\n")
         sf.write("#SBATCH --job-name=" + job_name + "\n")
         sf.write("#SBATCH --qos=" + partition + "\n")
+        if nodes is not None:
+            if not isinstance(nodes, int) or isinstance(nodes, bool) or nodes < 1:
+                raise ValueError(f"nodes must be a positive integer, got {nodes!r}")
+            sf.write("#SBATCH --nodes=" + str(nodes) + "\n")
         sf.write("#SBATCH --time=" + str(time[0]) + ":" + str(time[1]) + ":00\n")
         sf.write("#SBATCH --ntasks " + str(ntasks) + "\n")
         sf.write("#SBATCH --cpus-per-task " + str(cpus_per_task) + "\n")
