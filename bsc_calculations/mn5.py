@@ -1,5 +1,61 @@
 import os
 
+
+def openmmSimulationCommand(
+    prmtop,
+    rst7,
+    simulation_time=100,
+    simulation_script="openmm_simulation.py",
+    work_dir=None,
+    **kwargs,
+):
+    """Return a shell command string for an OpenMM simulation job.
+
+    Builds the command expected by the standard openmm_simulation.py script
+    and optionally wraps it in a ``cd <work_dir> &&`` prefix so it can be
+    dropped directly into a ``jobArrays`` jobs list.
+
+    Parameters
+    ----------
+    prmtop : str or Path
+        Path to the AMBER topology file (.prmtop).
+    rst7 : str or Path
+        Path to the AMBER coordinate file (.rst7 / .inpcrd).
+    simulation_time : float
+        Total simulation time in ns (default 100).
+    simulation_script : str
+        Path to openmm_simulation.py (default: assumes it is on PATH or in
+        the working directory).
+    work_dir : str or Path, optional
+        If given, prepend ``cd <work_dir> &&`` to the command.
+    **kwargs
+        Additional key=value pairs are appended as ``--key value`` flags.
+        Underscores in key names are replaced with hyphens.
+
+    Returns
+    -------
+    str
+        Shell command ready for use in ``jobArrays``.
+
+    Examples
+    --------
+    >>> cmd = openmmSimulationCommand("system.prmtop", "system.rst7",
+    ...                               simulation_time=50,
+    ...                               work_dir="/path/to/run",
+    ...                               temperature=310)
+    >>> jobs = [cmd]
+    >>> jobArrays(jobs, script_name="run.sh", program="openmm", time=24)
+    """
+    parts = [f"python {simulation_script}", str(prmtop), str(rst7), str(simulation_time)]
+    for key, val in kwargs.items():
+        flag = "--" + key.replace("_", "-")
+        parts.append(f"{flag} {val}")
+    cmd = " ".join(parts)
+    if work_dir is not None:
+        cmd = f"cd {work_dir} && {cmd}"
+    return cmd
+
+
 def jobArrays(
     jobs,
     script_name=None,
@@ -239,10 +295,12 @@ def jobArrays(
         else:
             modules += af3_modules
 
+        if partition == "gp_debug":
+            partition = "acc_debug"
         if partition == "gp_bscls":
             partition = "acc_bscls"
 
-        sbatch_time, time = _normalize_time(partition, (2, 0))
+        sbatch_time, time = _normalize_time(partition, time)
 
         if exports is None:
             exports = []
