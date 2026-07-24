@@ -118,7 +118,7 @@ def jobArrays(
         Modules to `module unload` before loading new ones.
 
     program : {None, "rosetta","pyrosetta","pml","netsolp","blast","msd",
-               "alphafold","hmmer","asitedesign","foldseek","cp2k"}, default=None
+               "alphafold","hmmer","asitedesign","foldseek","cp2k","orca"}, default=None
         Convenience presets that append recommended modules/paths/envs.
         Examples:
         - `"cp2k"`: loads `ANACONDA`, sets `conda_env` to
@@ -250,12 +250,14 @@ def jobArrays(
         grouped_jobs = []
         gj = ""
         for i, j in enumerate(jobs):
-            gj += j
+            # Newline separator prevents adjacent commands from being glued
+            # onto the same shell line (e.g. `cmd1 -WAIT"cmd2 ..."`).
+            gj += j + "\n"
             if (i + 1) % group_jobs_by == 0:
-                grouped_jobs.append(gj)
+                grouped_jobs.append(gj.rstrip("\n"))
                 gj = ""
         if gj != "":
-            grouped_jobs.append(gj)
+            grouped_jobs.append(gj.rstrip("\n"))
         jobs = grouped_jobs
 
     elif not isinstance(group_jobs_by, type(None)):
@@ -281,6 +283,8 @@ def jobArrays(
         "openmm"
         'foldseek',
         "schrodinger",
+        "cp2k",
+        "orca",
     ]
     if program != None:
         if program not in available_programs:
@@ -405,6 +409,9 @@ def jobArrays(
         exports += [
             f"PATH=$PATH:{schrodinger_path}",
             f"SCHRODINGER={schrodinger_path}",
+            # Keep user-site packages out of Schrödinger's embedded Python to
+            # avoid shadowing bundled Biopython / other deps.
+            "PYTHONNOUSERSITE=1",
         ]
 
     if program == 'cp2k':
@@ -430,6 +437,29 @@ def jobArrays(
             sources = []
         sources.append('/gpfs/projects/bsc72/Programs/cp2k-2025.2/tools/toolchain/install/setup')
         pathMN.append("/gpfs/projects/bsc72/Programs/cp2k-2025.2.clean/exe/local")
+
+    if program == "orca":
+        # ORCA 5.0.3 prereqs openmpi/4.1.1, which itself prereqs intel/2021.4.
+        # The default login modules (intel/2017 + impi) conflict with openmpi,
+        # so we purge first and reload a clean stack.
+        module_purge = True
+        orca_modules = ['intel/2021.4', 'openmpi/4.1.1', 'orca/5.0.3']
+        if modules is None:
+            modules = orca_modules
+        else:
+            modules += orca_modules
+        # The orca/5.0.3 module on nord4 only prepends /apps/ORCA/5.0.3/ to
+        # PATH, but the actual binaries (orca, orca_mm, ...) live in
+        # /apps/ORCA/5.0.3/OPENMPI/. Add that directory directly so orca_mm,
+        # orca_2mkl, etc. resolve.
+        pathMN.append('/apps/ORCA/5.0.3/OPENMPI')
+        # ORCA refuses parallel runs unless the binary is invoked via its
+        # absolute path (mpirun-spawned workers need to know where to find
+        # orca). Export ORCA_BIN so users write `${ORCA_BIN} input.inp` in
+        # their job commands.
+        if exports is None:
+            exports = []
+        exports.append('ORCA_BIN=/apps/ORCA/5.0.3/OPENMPI/orca')
 
     if job_name == None:
         raise ValueError("job_name == None. You need to specify a name for the job")
@@ -606,21 +636,37 @@ def singleJob(
         purge = True
         if modules == None:
             modules = []
-        modules += modules + [
+        # The previous `modules += modules + [...]` was a typo that duplicated
+        # any caller-supplied modules. `.extend(...)` does what was intended.
+        # `mkl/2022.3` is pinned: the Nord4-native PELE 1.8.1 binary needs
+        # MKL .so.2 SOnames (libmkl_intel_lp64.so.2 etc.), and the default
+        # `mkl` module on Nord4 (2017.4) only ships .so without the .2
+        # suffix. mkl/2022.3 is the first Nord4 module providing the
+        # required SOnames; the binary launches cleanly under it.
+        modules.extend([
                 'ANACONDA',
                 'intel',
                 'impi',
-                'mkl',
-                'boost/1.64.0-mpi']
+                'mkl/2022.3',
+                'boost/1.64.0-mpi'])
         conda_eval_bash = True
         conda_env = "/gpfs/projects/bsc72/conda_envs/platform"
         if exports == None:
             exports = []
-        exports += exports + [
-            "PELE_EXEC=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/bin/PELE_mpi",
-            "export PELE_DATA=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/Data",
-            "export PELE_DOCUMENTS=/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/1.8.0/Documents"
-        ]
+        # Same `exports += exports + [...]` typo. Also: the PELE++ path
+        # `/gpfs/projects/bsc72/MN4/bsc72/PELE++/mniv/` is the legacy MN4
+        # location and no longer exists on Nord4. Repointed at the current
+        # Nord4-native PELE 1.8.1 install under
+        # `/gpfs/projects/bsc72/PELE++/nord4/`. The 2nd / 3rd entries
+        # previously embedded their own `export ` prefix; the sbatch
+        # writer at ~L799 already prefixes `export `, so the old entries
+        # rendered as `export export PELE_DATA=...`. Strip the prefix here.
+        # Caught 2026-05-20 while wiring up cdk2_design_pele on Nord4.
+        exports.extend([
+            "PELE_EXEC=/gpfs/projects/bsc72/PELE++/nord4/V1.8.1/PELE-1.8.1_mpi/PELE-1.8.1",
+            "PELE_DATA=/gpfs/projects/bsc72/PELE++/nord4/V1.8.1/PELE-1.8.1_mpi/Data",
+            "PELE_DOCUMENTS=/gpfs/projects/bsc72/PELE++/nord4/V1.8.1/PELE-1.8.1_mpi/Documents",
+        ])
 
     if program == "pyrosetta":
         pyrosetta_modules = ["anaconda"]

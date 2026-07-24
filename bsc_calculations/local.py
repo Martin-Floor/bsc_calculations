@@ -37,8 +37,9 @@ def parallel(jobs, cpus=None, script_name='commands'):
     """
     # Write parallel execution scheme #
 
-    if jobs == []:
-        raise ValueError('The jobs list is empty!')
+    if not jobs:
+        print('Warning: the jobs list is empty. No scripts generated.')
+        return
 
     # Check input
     if isinstance(jobs, str):
