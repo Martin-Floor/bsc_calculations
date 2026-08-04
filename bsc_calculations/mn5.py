@@ -79,6 +79,7 @@ def jobArrays(
     account="bsc72",
     jobs_range=None,
     group_jobs_by=None,
+    mps=None,
     pythonpath=None,
     local_libraries=False,
     msd_version=None,
@@ -105,6 +106,13 @@ def jobArrays(
     group_jobs_by : int
         Group jobs to enter in the same job array (useful for launching many short
         jobs when there are a max_job_allowed limit per user.
+    mps : int
+        Pack this many jobs CONCURRENTLY onto a single GPU via NVIDIA MPS (Multi-Process
+        Service). Each array task runs `mps` job commands in parallel under an MPS control
+        daemon (with OMP_NUM_THREADS = cpus-per-task / mps), sharing one GPU -- the
+        throughput-efficient layout when a single job under-utilizes the GPU. Requires
+        gpus=1 and is mutually exclusive with group_jobs_by (which bundles sequentially).
+        Benchmark the packing factor per system before committing (efficiency knee).
     local_libraries : bool
         Add local libraries (e.g., prepare_proteins) to PYTHONPATH?
     """
@@ -191,6 +199,38 @@ def jobArrays(
     elif not isinstance(group_jobs_by, type(None)):
         raise ValueError("You must give an integer to group jobs by this number.")
 
+    # NVIDIA MPS packing: run `mps` jobs concurrently on ONE GPU per array task. Each group is
+    # wrapped in the MPS control-daemon boilerplate; the existing per-array-task emission below
+    # writes the block verbatim inside its `if [[ $SLURM_ARRAY_TASK_ID = N ]]` guard.
+    if mps is not None:
+        if not isinstance(mps, int) or isinstance(mps, bool) or mps < 1:
+            raise ValueError("mps must be a positive integer (jobs packed per GPU under NVIDIA MPS).")
+        if group_jobs_by is not None:
+            raise ValueError("mps and group_jobs_by are mutually exclusive (both bundle jobs per array task).")
+        if gpus != 1:
+            raise ValueError("mps packing shares ONE GPU across the packed processes; use gpus=1.")
+        if len(jobs) % mps != 0:
+            print(
+                f"[bsc_calculations] WARNING: {len(jobs)} jobs is not divisible by mps={mps}; "
+                f"the last array task will pack fewer than {mps} processes."
+            )
+        mps_jobs = []
+        for start in range(0, len(jobs), mps):
+            bundle = [j.rstrip("\n") for j in jobs[start : start + mps]]
+            block = (
+                "export CUDA_MPS_PIPE_DIRECTORY=/tmp/nvidia-mps-$SLURM_JOB_ID-$SLURM_ARRAY_TASK_ID\n"
+                "export CUDA_MPS_LOG_DIRECTORY=/tmp/nvidia-mps-log-$SLURM_JOB_ID-$SLURM_ARRAY_TASK_ID\n"
+                'mkdir -p "$CUDA_MPS_PIPE_DIRECTORY" "$CUDA_MPS_LOG_DIRECTORY"\n'
+                "nvidia-cuda-mps-control -d\n"
+                f"export OMP_NUM_THREADS=$(( SLURM_CPUS_PER_TASK / {mps} > 0 ? SLURM_CPUS_PER_TASK / {mps} : 1 ))\n"
+            )
+            for cmd in bundle:
+                block += cmd + " &\n"
+            block += "wait\n"
+            block += "echo quit | nvidia-cuda-mps-control\n"
+            mps_jobs.append(block)
+        jobs = mps_jobs
+
     # Check PYTHONPATH variable
     if pythonpath == None:
         pythonpath = []
@@ -215,6 +255,7 @@ def jobArrays(
         "blast",
         "pyrosetta",
         "openmm",
+        "evbopenmm",
         "gamd",
         "Q6",
         "bioml",
@@ -287,6 +328,18 @@ def jobArrays(
             modules = openmm_modules
         else:
             modules += openmm_modules
+
+        conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
+
+    if program == "evbopenmm":
+        # EVBOpenMM (EVB/FEP/SCAAS + MPS-packed GS/FEP) validated on cuda/12.8 + openmm_cuda.
+        # PYTHONPATH to the EVBOpenMM checkout is caller-supplied (pythonpath=) since the checkout
+        # location is project-specific (shared /gpfs/projects vs a dedicated scratch copy).
+        evbopenmm_modules = ["cuda/12.8"]
+        if modules == None:
+            modules = evbopenmm_modules
+        else:
+            modules += evbopenmm_modules
 
         conda_env = "/gpfs/projects/bsc72/conda_envs/openmm_cuda"
 
