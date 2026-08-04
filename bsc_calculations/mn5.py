@@ -416,6 +416,9 @@ def jobArrays(
             modules = ["blast"]
         else:
             modules += ["blast"]
+        if exports is None:
+            exports = []
+        exports.append(f"TREMBL_DB={TREMBL_DB}")
 
     if program == "pyrosetta":
         pyrosetta_modules = ["anaconda"]
