@@ -88,6 +88,7 @@ def jobArrays(
     extras=None,
     exports=None,
     sources=None,
+    colabfold_dir=None,
 ):
     """
     Set up job array scripts for marenostrum slurm job manager.
@@ -115,6 +116,13 @@ def jobArrays(
         Benchmark the packing factor per system before committing (efficiency knee).
     local_libraries : bool
         Add local libraries (e.g., prepare_proteins) to PYTHONPATH?
+    colabfold_dir : (bool, str)
+        Only used by program='bioemu'. Export COLABFOLD_DIR, which bioemu.sample
+        needs when it runs the MSA search itself (i.e. --sequence is a raw
+        sequence, setUpBioEmu(msa_calculation=False)). Not needed in MSA mode,
+        where colabfold_search runs beforehand and bioemu is fed an .a3m file.
+        True exports the colabfold folder shipped inside the bioemu conda env;
+        a string exports that path instead. None (default) does not export it.
     """
 
     # --- Normalize and clamp walltime (accepts None | int hours | (hours, minutes))
@@ -509,17 +517,50 @@ def jobArrays(
             modules += rosetta_modules
 
     if program == "bioemu":
+        # Stack validated on MN5 acc for both plain sampling and MSA mode
+        # (setUpBioEmu(msa_calculation=True), which runs colabfold_search before
+        # bioemu.sample):
+        #  - bsc/1.0 + intel/2025.1 are needed by the MMseqs2 build used for the
+        #    colabfold_search step (/apps/ACC/MMSEQS2/17-b804f).
+        #  - the colabfold binaries must be *prepended* to PATH from the
+        #    localcolabfold conda env inside the bioemu env; the previous preset
+        #    appended /gpfs/projects/bsc72/Programs/bioemu_colabfold/bin, which
+        #    left colabfold_search unresolved.
+        #  - HF_* point at the shared offline HuggingFace cache: compute nodes
+        #    have no internet, so without these bioemu.sample fails trying to
+        #    download the model weights.
+        bioemu_modules = ["bsc/1.0", "anaconda", "intel/2025.1"]
         if modules == None:
-            modules = ["anaconda"]
+            modules = bioemu_modules
         else:
-            modules += ["anaconda"]
-        conda_env = "/gpfs/projects/bsc72/conda_envs/bioemu2"
+            modules += bioemu_modules
+        bioemu_env_path = "/gpfs/projects/bsc72/conda_envs/bioemu"
+        conda_env = bioemu_env_path
         if exports == None:
             exports = []
-        exports += [
-            "COLABFOLD_DIR=/gpfs/projects/bsc72/conda_envs/bioemu2/colabfold",
-            "PATH=$PATH:/gpfs/projects/bsc72/Programs/bioemu_colabfold/bin",
+        bioemu_exports = [
+            f"PATH={bioemu_env_path}/colabfold/localcolabfold/colabfold-conda/bin:$PATH",
+            "HF_HOME=/gpfs/projects/bsc72/bioemu_hf_cache",
+            "HF_HUB_CACHE=/gpfs/projects/bsc72/bioemu_hf_cache/hub",
+            "HF_HUB_OFFLINE=1",
+            "TRANSFORMERS_OFFLINE=1",
         ]
+        # COLABFOLD_DIR is only read when bioemu.sample runs the MSA search
+        # itself (raw --sequence input), so it is opt-in: in MSA mode the
+        # alignment is built by colabfold_search before bioemu is called.
+        if colabfold_dir is not None and colabfold_dir is not False:
+            if colabfold_dir is True:
+                colabfold_path = f"{bioemu_env_path}/colabfold"
+            elif isinstance(colabfold_dir, str):
+                colabfold_path = colabfold_dir
+            else:
+                raise ValueError(
+                    "colabfold_dir must be True, a path string, or None"
+                )
+            bioemu_exports.append(f"COLABFOLD_DIR={colabfold_path}")
+        for e in bioemu_exports:
+            if e not in exports:
+                exports.append(e)
 
     if program == 'bioemu_af':
         if modules == None:
