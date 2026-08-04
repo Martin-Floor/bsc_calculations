@@ -1,5 +1,8 @@
 import os
 
+# ── Cluster-resident databases ─────────────────────────────────────────────────
+TREMBL_DB = "/gpfs/projects/bsc72/databases/trembl/uniprot_trembl"
+
 
 def openmmSimulationCommand(
     prmtop,
