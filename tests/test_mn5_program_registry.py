@@ -195,3 +195,77 @@ def test_jobarrays_nodes_rejects_bad_value(tmp_path, monkeypatch):
         with pytest.raises(ValueError):
             mn5.jobArrays(jobs=["echo hi"], script_name=str(sp), job_name="j",
                           partition="gp_bscls", ntasks=1, cpus_per_task=1, time=1, nodes=bad)
+
+
+# ---------------------------------------------------------------------------
+# evbopenmm program preset + mps= (NVIDIA MPS GPU packing)
+# ---------------------------------------------------------------------------
+
+
+def test_program_registry_lists_evbopenmm():
+    import inspect
+    assert '"evbopenmm"' in inspect.getsource(mn5.jobArrays)
+
+
+def test_evbopenmm_preset(tmp_path, monkeypatch):
+    """program='evbopenmm' loads cuda/12.8 + the openmm_cuda conda env (the validated
+    EVBOpenMM runtime); PYTHONPATH to the checkout stays caller-supplied."""
+    monkeypatch.chdir(tmp_path)
+    sp = tmp_path / "run.sh"
+    mn5.jobArrays(jobs=["python3 run_kex2_fep.py > fep.log"], script_name=str(sp),
+                  job_name="evb", partition="acc_bscls", gpus=1, time=36,
+                  program="evbopenmm", pythonpath=["/gpfs/scratch/bsc72/mfloor/EVBOpenMM/src"])
+    text = _read_script(sp)
+    assert "module load cuda/12.8" in text
+    assert "source activate /gpfs/projects/bsc72/conda_envs/openmm_cuda" in text
+    assert "export PYTHONPATH=$PYTHONPATH:/gpfs/scratch/bsc72/mfloor/EVBOpenMM/src" in text
+
+
+def test_mps_packing_emits_daemon_and_concurrent_launch(tmp_path, monkeypatch):
+    """mps=4 packs 4 jobs concurrently on ONE GPU under the NVIDIA MPS daemon: one array
+    task per group of 4, private per-task pipe/log dirs, OMP split, every command
+    backgrounded, a wait barrier, and daemon shutdown."""
+    monkeypatch.chdir(tmp_path)
+    sp = tmp_path / "run.sh"
+    jobs = [f"python3 run.py --w {i}" for i in range(8)]
+    mn5.jobArrays(jobs=jobs, script_name=str(sp), job_name="mps",
+                  partition="acc_bscls", gpus=1, time=36, program="evbopenmm", mps=4)
+    text = _read_script(sp)
+    assert "#SBATCH --gres gpu:1" in text
+    assert "#SBATCH --array=1-2" in text                          # 8 jobs / mps 4 = 2 groups
+    for marker in (
+        "export CUDA_MPS_PIPE_DIRECTORY=/tmp/nvidia-mps-$SLURM_JOB_ID-$SLURM_ARRAY_TASK_ID",
+        "nvidia-cuda-mps-control -d",
+        "export OMP_NUM_THREADS=$(( SLURM_CPUS_PER_TASK / 4",
+        "echo quit | nvidia-cuda-mps-control",
+    ):
+        assert marker in text, f"missing {marker!r}"
+    assert text.count("nvidia-cuda-mps-control -d") == 2          # one daemon per group
+    assert text.count(" &\n") == 8                                # every job backgrounded
+
+
+def test_mps_guards(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    sp = tmp_path / "run.sh"
+    jobs = ["a", "b", "c", "d"]
+    with pytest.raises(ValueError):                              # mutually exclusive with grouping
+        mn5.jobArrays(jobs=jobs, script_name=str(sp), job_name="j",
+                      partition="acc_bscls", gpus=1, time=1, mps=2, group_jobs_by=2)
+    with pytest.raises(ValueError):                              # must share ONE GPU
+        mn5.jobArrays(jobs=jobs, script_name=str(sp), job_name="j",
+                      partition="acc_bscls", gpus=2, time=1, mps=2)
+    for bad in (0, -1, 2.5, True):
+        with pytest.raises(ValueError):
+            mn5.jobArrays(jobs=jobs, script_name=str(sp), job_name="j",
+                          partition="acc_bscls", gpus=1, time=1, mps=bad)
+
+
+def test_mps_none_is_unchanged(tmp_path, monkeypatch):
+    """mps=None (default) -> a normal array, no MPS daemon (backward compatible)."""
+    monkeypatch.chdir(tmp_path)
+    sp = tmp_path / "run.sh"
+    mn5.jobArrays(jobs=["a", "b"], script_name=str(sp), job_name="j",
+                  partition="acc_bscls", gpus=1, time=1)
+    text = _read_script(sp)
+    assert "nvidia-cuda-mps" not in text
+    assert "#SBATCH --array=1-2" in text
